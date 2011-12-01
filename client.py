@@ -49,12 +49,14 @@ class Client(object):
                         onerror = self._onerror)
         self.state = Client.DISCONNECTED
         
-            
 
     def _onopen(self):
         self.state = Client.CONNECTED
         
         Client.addMessage("open")
+        
+        self.heartbeat()
+        
     
     def _onmessage(self, msg):
         
@@ -82,6 +84,7 @@ class Client(object):
         self.state = Client.DISCONNECTED
         
     def heartbeat(self):
+        # print("heartbeat")
         if(self.state!=Client.DISCONNECTED):            
             Client.addMessage("heartbeat")
             
@@ -89,6 +92,7 @@ class Client(object):
             self.ws.send('2:::')
     
     def sendChat(self, msg):
+        # print("sending chat for reals!")
         self.ws.send('5:::{"name":"chat", "args":[{"text":"'+msg+'"}]}')
     
     @staticmethod
@@ -105,7 +109,7 @@ class Client(object):
         Client.lastMessageFlush = time.time()
         
         # count up all the different types and do a one line summary
-        d = {"open":0, "close":0, "heartbeat":0, "error":0, "m_identify":0, "m_chat":0, "m_pulse":0, "m_rooms":0, "m_bots":0}
+        d = {"open":0, "close":0, "heartbeat":0, "error":0, "m_chat":0}
         for i in set(Client.messageQueue):
             d[i] = Client.messageQueue.count(i)
         
@@ -114,7 +118,6 @@ class Client(object):
         outputString = ""
         for i in d:
             outputString = outputString + i + ": {:<5} ".format(str(d[i]))
-            # outputString = outputString + i + ": " + str(d[i]) + " "
             
         print(outputString)
 
@@ -127,16 +130,18 @@ def processChat():
         return
     
     threading.Timer(1.0, processChat).start()
-    messagesPerSecond = chat/60
+    messagesPerSecond = chat/60.0
     
+    # print("messagesPerSecond: " + str(messagesPerSecond))
+
     for i in range(0, int(messagesPerSecond)):
+        # print("sending message")
         clients[i].sendChat("this is a chat message!")
         time.sleep(1.0/messagesPerSecond)
     
 
 clients = []
-chat = 0.0
-shutdown = False
+
 
 if __name__ == '__main__':
     
@@ -156,6 +161,9 @@ if __name__ == '__main__':
     global chat
     chat = int(args.chat)
     
+    global shutdown
+    shutdown = False
+    
     print("connecting to: %s:%d x%d" %(server, port, num_clients))
     
     for index in range(0, num_clients):
@@ -163,7 +171,8 @@ if __name__ == '__main__':
         clients.append(client)
     
     if(chat>0):
-        threading.Timer(5.0, processChat).start()
+        print("starting chat callback")
+        threading.Timer(2.0, processChat).start()
     
     print("All clients created!")
     
@@ -172,7 +181,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("Closing all connections...")
         Client.messageFlushingEngaged = False
-        global shutdown
         shutdown = True
         for client in clients:
             client.close()
