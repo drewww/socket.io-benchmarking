@@ -57,6 +57,8 @@ class Client(object):
         
         self.heartbeat()
         
+        self.ws.send('5:::{"name":"hello", "args":[]}')
+        
     
     def _onmessage(self, msg):
         
@@ -90,9 +92,11 @@ class Client(object):
             
             threading.Timer(15.0, self.heartbeat).start()
             self.ws.send('2:::')
+            
     
     def sendChat(self, msg):
         # print("sending chat for reals!")
+        Client.addMessage("sent_chat")
         self.ws.send('5:::{"name":"chat", "args":[{"text":"'+msg+'"}]}')
     
     @staticmethod
@@ -136,7 +140,7 @@ def processChat():
 
     for i in range(0, int(messagesPerSecond)):
         # print("sending message")
-        clients[i].sendChat("this is a chat message!")
+        clients[i].sendChat(str(time.time()))
         time.sleep(1.0/messagesPerSecond)
     
 

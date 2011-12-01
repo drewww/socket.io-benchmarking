@@ -1,4 +1,5 @@
-var socket_lib = require('socket.io'),
+var app = require('express').createServer(),
+    io = require('socket.io').listen(app),
     logger = require('winston'),
     program = require('commander');
     
@@ -11,7 +12,7 @@ logger.default.transports.console.timestamp = true;
     
 program.version('0.1')
     .option('-p, --port [num]', 'Set the server port (default 8080)')
-    .option('-H, --disableheartbeats', 'Diable heartbeats')
+    .option('-H, --disableheartbeats', 'Disable heartbeats')
     .parse(process.argv)
     
 var server = "localhost";
@@ -27,7 +28,7 @@ if(program.port) {
     port = program.port;
 }
 
-io = socket_lib.listen(port);
+app.listen(port);
 
 if(program.disableheartbeats) {
     io.set("heartbeats", false)
@@ -45,6 +46,10 @@ var messagesPerSecond = 0;
 // LISTENERS
 //
 
+app.get('/', function (req, res) {
+  res.sendfile(__dirname + '/index.html');
+});
+
 io.sockets.on('connection', function(socket) {
     connectedUsersCount++;
     
@@ -53,6 +58,10 @@ io.sockets.on('connection', function(socket) {
         io.sockets.emit('chat', {text:data.text});
         
         messagesPerSecond++;
+    });
+    
+    socket.on('hello', function(data) {
+        logger.info("hello");
     });
     
     socket.on('disconnect', function(data) {
@@ -68,7 +77,6 @@ setTimeout(logStatus, 1000);
 
 function logStatus() {
     setTimeout(logStatus, 1000);
-    
     
     
     logger.info("users: " + connectedUsersCount + "\tmessagesPerMin: " + messagesPerSecond);
