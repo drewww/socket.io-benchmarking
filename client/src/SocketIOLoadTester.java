@@ -75,7 +75,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		Iterator<SocketIOClient> clientsIterator = this.clients.iterator();
 		for(int i=0; i<messagesPerSecond; i++) {
 			SocketIOClient client = clientsIterator.next();
-			client.chat("-" + client.hashCode() + Calendar.getInstance().getTimeInMillis());
+			client.chat("12345");
 			
 			if(!clientsIterator.hasNext()) {
 				clientsIterator = clients.iterator();
@@ -89,7 +89,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	public static void main(String[] args) {
 		// Just start the thread.
 		
-		SocketIOLoadTester tester = new SocketIOLoadTester(100);
+		SocketIOLoadTester tester = new SocketIOLoadTester(10);
 		tester.start();
 	}
 
@@ -100,9 +100,8 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	}
 
 	@Override
-	public void onMessage(String type) {
-		// TODO Auto-generated method stub
-		
+	public void onMessage(String message) {
+		System.out.println("message: " + message);
 	}
 
 	@Override

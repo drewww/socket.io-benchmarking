@@ -5,18 +5,30 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
 
 import net.tootallnate.websocket.WebSocketClient;
 
 
 public class SocketIOClient extends WebSocketClient {
 	
-	SocketIOClientEventListener listener;
+	protected SocketIOClientEventListener listener;
+	protected Map<String, Long> requests = new HashMap<String, Long>();
+	
+	protected static int nextId = 0;
+	
+	protected int id;
+	
 	
 	public SocketIOClient(URI server, SocketIOClientEventListener listener) {
 		super(server);
 		
 		this.listener = listener;
+		id = nextId;
+		
+		nextId++;
 	}
 
 	@Override
@@ -30,17 +42,22 @@ public class SocketIOClient extends WebSocketClient {
 	}
 
 	@Override
-	public void onMessage(String arg0) {
-		int type = new Integer(arg0.split(":")[0]).intValue();
+	public void onMessage(String message) {
+		long messageArrivedAt = Calendar.getInstance().getTimeInMillis();
+		
+		int type = new Integer(message.toCharArray()[0]).intValue();
 		
 		switch(type) {
 		case 2:
 			this.heartbeat();
 			break;
 		default:
-			// TODO Make this the real message type, or something. This will get changed when we
-			// handle message turnaround times properly anyway. 
-			this.listener.onMessage("5");
+			// We want to extract the actual message. Going to hack this shit.
+			String[] messageParts = message.split(":");
+			String lastPart = messageParts[messageParts.length-1];
+			String chatPayload = lastPart.substring(1, lastPart.length()-4);
+			
+			this.listener.onMessage(chatPayload);
 			break;
 		}
 	}
@@ -65,6 +82,11 @@ public class SocketIOClient extends WebSocketClient {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public void sendTimestampedChat() {
+		String message = new Long(Calendar.getInstance().getTimeInMillis()).toString();
+		this.chat(message);
 	}
 	
 	public void hello() {
