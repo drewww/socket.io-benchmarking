@@ -1,7 +1,8 @@
 import java.io.IOException;
-import java.util.Calendar;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 
@@ -16,11 +17,13 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	
 	protected int concurrency;
 	
-	protected int currentMessagesPerSecond = 0;
+	protected int currentMessagesPerSecond = STARTING_MESSAGES_PER_SECOND_RATE;
 	
 	protected boolean lostConnection = false;
 	
 	protected Integer numConnectionsMade = 0;
+	
+	protected List<Long> roundtripTimes;
 	
 	protected SocketIOLoadTester(int concurrency) {
 		this.concurrency = concurrency;
@@ -49,11 +52,24 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		// Protocol is spend 3 seconds at each load level, then ramp up messages per second.
 		while(!lostConnection) {
 			System.out.print(concurrency + " connections at " + currentMessagesPerSecond + ": ");
+			
+			this.roundtripTimes = new ArrayList<Long>(SECONDS_TO_TEST_EACH_LOAD_STATE * currentMessagesPerSecond);
+			
 			for(int i=0; i<SECONDS_TO_TEST_EACH_LOAD_STATE; i++) {
 				this.triggerChatMessages(currentMessagesPerSecond);
 				
 				try {
 					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			// At this point, all messages have been sent so we should wait until they've all been received.
+			synchronized(this) {
+				try {
+					this.wait();
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -128,7 +144,13 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 
 	@Override
 	public void messageArrivedWithRoundtrip(long roundtripTime) {
-		// TODO Capture all this data and then process it at the end of a cycle.
+		this.roundtripTimes.add(roundtripTime);
+		
+		if(this.roundtripTimes.size() == SECONDS_TO_TEST_EACH_LOAD_STATE * currentMessagesPerSecond) {
+			synchronized(this) {
+				this.notifyAll();
+			}
+		}
 	}
 
 }
