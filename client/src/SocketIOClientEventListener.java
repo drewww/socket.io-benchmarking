@@ -7,5 +7,6 @@ public interface SocketIOClientEventListener {
 	public void onMessage(String message);
 	public void onClose();
 	public void onOpen();
+	public void messageArrivedWithRoundtrip(long roundtripTime);
 	
 }

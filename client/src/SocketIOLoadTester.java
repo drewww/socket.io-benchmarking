@@ -75,7 +75,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		Iterator<SocketIOClient> clientsIterator = this.clients.iterator();
 		for(int i=0; i<messagesPerSecond; i++) {
 			SocketIOClient client = clientsIterator.next();
-			client.chat("12345");
+			client.sendTimestampedChat();
 			
 			if(!clientsIterator.hasNext()) {
 				clientsIterator = clients.iterator();
@@ -101,8 +101,10 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 
 	@Override
 	public void onMessage(String message) {
-		System.out.println("message: " + message);
+		//		System.out.println("message: " + message);
 	}
+	
+	
 
 	@Override
 	public void onClose() {
@@ -122,6 +124,11 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 				this.notifyAll();
 			}
 		}
+	}
+
+	@Override
+	public void messageArrivedWithRoundtrip(long roundtripTime) {
+		// TODO Capture all this data and then process it at the end of a cycle.
 	}
 
 }

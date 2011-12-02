@@ -45,19 +45,25 @@ public class SocketIOClient extends WebSocketClient {
 	public void onMessage(String message) {
 		long messageArrivedAt = Calendar.getInstance().getTimeInMillis();
 		
-		int type = new Integer(message.toCharArray()[0]).intValue();
-		
-		switch(type) {
-		case 2:
+		switch(message.toCharArray()[0]) {
+		case '2':
 			this.heartbeat();
 			break;
-		default:
+		case '5':
 			// We want to extract the actual message. Going to hack this shit.
 			String[] messageParts = message.split(":");
 			String lastPart = messageParts[messageParts.length-1];
 			String chatPayload = lastPart.substring(1, lastPart.length()-4);
 			
+			long roundtripTime;
+			String[] payloadParts = chatPayload.split(",");
+			if(new Integer(this.id).toString().compareTo(payloadParts[0])==0) {
+				roundtripTime = messageArrivedAt - new Long(payloadParts[1]);
+				this.listener.messageArrivedWithRoundtrip(roundtripTime);
+			}
+
 			this.listener.onMessage(chatPayload);
+
 			break;
 		}
 	}
@@ -85,7 +91,7 @@ public class SocketIOClient extends WebSocketClient {
 	}
 	
 	public void sendTimestampedChat() {
-		String message = new Long(Calendar.getInstance().getTimeInMillis()).toString();
+		String message = this.id + "," + new Long(Calendar.getInstance().getTimeInMillis()).toString();
 		this.chat(message);
 	}
 	
