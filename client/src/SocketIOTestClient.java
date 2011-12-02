@@ -18,6 +18,7 @@ public class SocketIOTestClient extends WebSocketClient {
 	private boolean connected = false;
 	private static boolean threadStarted = false;
 	
+	private static Integer numMessagesReceived = 0;
 	
 	private static Set<SocketIOTestClient> clients = new HashSet<SocketIOTestClient>(); 
 	
@@ -55,7 +56,9 @@ public class SocketIOTestClient extends WebSocketClient {
 			this.heartbeat();
 			break;
 		default:
-//			System.out.println(arg0);
+			synchronized(numMessagesReceived){
+				numMessagesReceived++;
+			}
 			break;
 		}
 	}
@@ -70,9 +73,7 @@ public class SocketIOTestClient extends WebSocketClient {
 	
 	public void heartbeat() {
 		try {
-			System.out.println("Heartbeat!");
 			this.send("2:::");
-			
 			this.lastHeartbeat = Calendar.getInstance().getTimeInMillis();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -125,8 +126,12 @@ public class SocketIOTestClient extends WebSocketClient {
 			while(true) {
 				// Loop through all the clients and make them send a message. We'll worry about rate limiting in a sec.
 				for(SocketIOTestClient client : clients) {
-					System.out.println("client: " + client);
 					client.chat("-" + client.hashCode() + Calendar.getInstance().getTimeInMillis());
+				}
+				
+				synchronized(numMessagesReceived) {
+					System.out.println("messages received: " + numMessagesReceived);
+					numMessagesReceived = 0;
 				}
 				
 				try {
