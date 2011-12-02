@@ -15,23 +15,19 @@ import net.tootallnate.websocket.WebSocketClient;
 
 public class SocketIOTestClient extends WebSocketClient {
 
-	private long lastHeartbeat = 0;
-	private boolean connected = false;
 	private static boolean threadStarted = false;
 	
 	private static Integer numMessagesReceived = 0;
 	
-	private static Set<SocketIOTestClient> clients = new HashSet<SocketIOTestClient>(); 
+	private static Set<SocketIOTestClient> clients = new HashSet<SocketIOTestClient>();
 	
 	public SocketIOTestClient(URI server) {
 		super(server);
-		System.out.println("Started connection to: " + server);
-		
 		SocketIOTestClient.clients.add(this);
 		
 		if(!threadStarted) {
 			threadStarted = true;
-			(new Thread(new ChattingThread(20))).start();
+			(new Thread(new ChattingThread(2))).start();
 		}
 	}
 
@@ -67,15 +63,11 @@ public class SocketIOTestClient extends WebSocketClient {
 	@Override
 	public void onOpen() {
 		// TODO Auto-generated method stub
-		System.out.println("open!");
-		
-		this.hello();
 	}
 	
 	public void heartbeat() {
 		try {
 			this.send("2:::");
-			this.lastHeartbeat = Calendar.getInstance().getTimeInMillis();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -168,8 +160,8 @@ public class SocketIOTestClient extends WebSocketClient {
 	public static void main(String[] args) {
 
 		
-		for(int i=0; i<10; i++) {
-			SocketIOTestClient c = new SocketIOTestClient(SocketIOTestClient.getNewSocketURI("localhost:8080"));
+		for(int i=0; i<1600; i++) {
+			SocketIOTestClient c = new SocketIOTestClient(SocketIOTestClient.getNewSocketURI("roar.media.mit.edu:8080"));
 			c.connect();
 		}
 
