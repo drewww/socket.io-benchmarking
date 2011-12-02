@@ -108,8 +108,8 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	@Override
 	public void onClose() {
 		lostConnection = true;
+		System.out.println(" failed!");
 		System.out.println("Lost a connection. Shutting down.");
-		
 	}
 
 	@Override

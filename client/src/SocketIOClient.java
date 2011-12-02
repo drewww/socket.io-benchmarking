@@ -21,21 +21,16 @@ public class SocketIOClient extends WebSocketClient {
 
 	@Override
 	public void onClose() {
-		// TODO Auto-generated method stub
-		System.out.println("close!");
-		
 		this.listener.onClose();
 	}
 
 	@Override
 	public void onIOError(IOException arg0) {
-		// TODO Auto-generated method stub
 		System.out.println("error: " + arg0);
 	}
 
 	@Override
 	public void onMessage(String arg0) {
-		// TODO Auto-generated method stub
 		int type = new Integer(arg0.split(":")[0]).intValue();
 		
 		switch(type) {
@@ -52,7 +47,6 @@ public class SocketIOClient extends WebSocketClient {
 
 	@Override
 	public void onOpen() {
-		// TODO Auto-generated method stub
 		this.listener.onOpen();
 	}
 	
@@ -60,7 +54,6 @@ public class SocketIOClient extends WebSocketClient {
 		try {
 			this.send("2:::");
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -70,7 +63,6 @@ public class SocketIOClient extends WebSocketClient {
 			String fullMessage = "5:::{\"name\":\"chat\", \"args\":[{\"text\":\""+message+"\"}]}";
 			this.send(fullMessage);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
