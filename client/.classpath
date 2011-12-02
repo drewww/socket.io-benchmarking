@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="/Users/drew/Documents/Media Lab/socket-c10k-test/misc/Java-WebSocket/dist/WebSocket.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
