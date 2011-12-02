@@ -6,6 +6,8 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.util.Calendar;
+import java.util.HashSet;
+import java.util.Set;
 
 import net.tootallnate.websocket.WebSocketClient;
 
@@ -14,13 +16,21 @@ public class SocketIOTestClient extends WebSocketClient {
 
 	private long lastHeartbeat = 0;
 	private boolean connected = false;
+	private static boolean threadStarted = false;
 	
 	
-	private static Vector<SocketIOTestClient> = new Vector(); 
+	private static Set<SocketIOTestClient> clients = new HashSet<SocketIOTestClient>(); 
 	
 	public SocketIOTestClient(URI server) {
 		super(server);
 		System.out.println("Started connection to: " + server);
+		
+		SocketIOTestClient.clients.add(this);
+		
+		if(!threadStarted) {
+			threadStarted = true;
+			(new Thread(new ChattingThread())).start();
+		}
 	}
 
 	@Override
@@ -45,7 +55,7 @@ public class SocketIOTestClient extends WebSocketClient {
 			this.heartbeat();
 			break;
 		default:
-			System.out.println(arg0);
+//			System.out.println(arg0);
 			break;
 		}
 	}
@@ -110,15 +120,35 @@ public class SocketIOTestClient extends WebSocketClient {
 		}
 	}
 	
+	public class ChattingThread implements Runnable {
+		public void run() {
+			while(true) {
+				// Loop through all the clients and make them send a message. We'll worry about rate limiting in a sec.
+				for(SocketIOTestClient client : clients) {
+					System.out.println("client: " + client);
+					client.chat("-" + client.hashCode() + Calendar.getInstance().getTimeInMillis());
+				}
+				
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+		
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		
-		SocketIOTestClient c = new SocketIOTestClient(SocketIOTestClient.getNewSocketURI("localhost:8080"));
-		c.connect();
 
 		
+		for(int i=0; i<10; i++) {
+			SocketIOTestClient c = new SocketIOTestClient(SocketIOTestClient.getNewSocketURI("localhost:8080"));
+			c.connect();
+		}
 
 	}
 
