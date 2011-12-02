@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.URL;
 import java.util.Calendar;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 import net.tootallnate.websocket.WebSocketClient;
@@ -30,7 +31,7 @@ public class SocketIOTestClient extends WebSocketClient {
 		
 		if(!threadStarted) {
 			threadStarted = true;
-			(new Thread(new ChattingThread())).start();
+			(new Thread(new ChattingThread(20))).start();
 		}
 	}
 
@@ -122,13 +123,30 @@ public class SocketIOTestClient extends WebSocketClient {
 	}
 	
 	public class ChattingThread implements Runnable {
+		private int messagesPerSecond;
+		
+		public ChattingThread(int messagesPerSecond) {
+			this.messagesPerSecond = messagesPerSecond;
+		}
+		
+		public ChattingThread() {
+			this.messagesPerSecond = 1;
+		}
+		
 		public void run() {
 			while(true) {
 				// Loop through all the clients and make them send a message. We'll worry about rate limiting in a sec.
-				for(SocketIOTestClient client : clients) {
+								
+				Iterator clientsIterator = clients.iterator();
+				for(int i=0; i<messagesPerSecond; i++) {
+					SocketIOTestClient client = (SocketIOTestClient) clientsIterator.next();
 					client.chat("-" + client.hashCode() + Calendar.getInstance().getTimeInMillis());
+					
+					if(!clientsIterator.hasNext()) {
+						clientsIterator = clients.iterator();
+					}
 				}
-				
+
 				synchronized(numMessagesReceived) {
 					System.out.println("messages received: " + numMessagesReceived);
 					numMessagesReceived = 0;
