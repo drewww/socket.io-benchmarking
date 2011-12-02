@@ -15,6 +15,9 @@ public class SocketIOTestClient extends WebSocketClient {
 	private long lastHeartbeat = 0;
 	private boolean connected = false;
 	
+	
+	private static Vector<SocketIOTestClient> = new Vector(); 
+	
 	public SocketIOTestClient(URI server) {
 		super(server);
 		System.out.println("Started connection to: " + server);
@@ -35,26 +38,24 @@ public class SocketIOTestClient extends WebSocketClient {
 	@Override
 	public void onMessage(String arg0) {
 		// TODO Auto-generated method stub
-		System.out.println("message!");
+		int type = new Integer(arg0.split(":")[0]).intValue();
+		
+		switch(type) {
+		case 2:
+			this.heartbeat();
+			break;
+		default:
+			System.out.println(arg0);
+			break;
+		}
 	}
 
 	@Override
 	public void onOpen() {
 		// TODO Auto-generated method stub
 		System.out.println("open!");
-		this.connected = true;
 		
-		try {
-			this.send("5:::{'name':'hello', 'args':[]}");
-			
-			this.send("5:::{'name':'chat', 'args':[{'text':'hello'}]}");
-
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		new Thread(new TestClientThread()).start();
+		this.hello();
 	}
 	
 	public void heartbeat() {
@@ -63,7 +64,6 @@ public class SocketIOTestClient extends WebSocketClient {
 			this.send("2:::");
 			
 			this.lastHeartbeat = Calendar.getInstance().getTimeInMillis();
-			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -72,10 +72,18 @@ public class SocketIOTestClient extends WebSocketClient {
 	
 	public void chat(String message) {
 		try {
-			System.out.println("chat: " + message);
-			this.send("5:::{'name':'chat', 'args':[{'text':'"+message+"'}]}");
+			String fullMessage = "5:::{\"name\":\"chat\", \"args\":[{\"text\":\""+message+"\"}]}";
+			this.send(fullMessage);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void hello() {
+		try {
+			this.send("5:::{\"name\":\"hello\", \"args\":[]}");
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -102,40 +110,6 @@ public class SocketIOTestClient extends WebSocketClient {
 		}
 	}
 	
-	public void disconnect() {
-		try {
-			this.close();
-			this.connected = false;
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-	}
-
-	
-	private class TestClientThread implements Runnable {
-		
-		public void run() {
-			while(connected) {				
-				if(Calendar.getInstance().getTimeInMillis() - lastHeartbeat > 10000) {
-					heartbeat();
-				}
-				
-				chat("hello world!");
-				
-				try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-		}
-		
-	}
-	
-	
 	/**
 	 * @param args
 	 */
@@ -143,6 +117,8 @@ public class SocketIOTestClient extends WebSocketClient {
 		
 		SocketIOTestClient c = new SocketIOTestClient(SocketIOTestClient.getNewSocketURI("localhost:8080"));
 		c.connect();
+
+		
 
 	}
 
