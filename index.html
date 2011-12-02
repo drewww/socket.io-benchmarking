@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-type" content="text/html; charset=utf-8">
+	<title>Page Title</title>
+	
+	<script src="/socket.io/socket.io.js"></script>
+	<script>
+	  var socket = io.connect('http://localhost:8080');
+
+		function sendChat(message) {
+			socket.emit('chat', { text: 'message' });
+		}
+	</script>
+	
+</head>
+<body id="" onload="">
+<input type="button" name="chat" value="chat" id="chat" onclick='sendChat("CHAT!!!!");')>
+</body>
+</html>
