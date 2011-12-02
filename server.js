@@ -79,7 +79,7 @@ function logStatus() {
     setTimeout(logStatus, 1000);
     
     
-    logger.info("users: " + connectedUsersCount + "\tmessagesPerMin: " + messagesPerSecond);
+    logger.info("users: " + connectedUsersCount + "\tmessagesPerSecond: " + messagesPerSecond);
     messagesPerSecond = 0;
 }
 
