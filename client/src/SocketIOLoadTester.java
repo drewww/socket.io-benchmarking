@@ -7,9 +7,10 @@ import java.util.Set;
 
 public class SocketIOLoadTester extends Thread implements SocketIOClientEventListener {
 
-	public static final int STARTING_MESSAGES_PER_SECOND_RATE = 0;
+	public static final int STARTING_MESSAGES_PER_SECOND_RATE = 10;
 	public static final int SECONDS_TO_TEST_EACH_LOAD_STATE = 5;
 	public static final int MESSAGES_PER_SECOND_RAMP = 5;
+	public static final int SECONDS_BETWEEN_TESTS = 1;
 	
 	protected Set<SocketIOClient> clients = new HashSet<SocketIOClient>();
 	
@@ -47,10 +48,22 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		// Actually run the test.
 		// Protocol is spend 3 seconds at each load level, then ramp up messages per second.
 		while(!lostConnection) {
-			this.triggerChatMessages(50);
+			System.out.print(concurrency + " connections at " + currentMessagesPerSecond + ": ");
+			for(int i=0; i<SECONDS_TO_TEST_EACH_LOAD_STATE; i++) {
+				this.triggerChatMessages(currentMessagesPerSecond);
+				
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 			
+			System.out.println(" passed");
+			currentMessagesPerSecond += MESSAGES_PER_SECOND_RAMP;
 			try {
-				Thread.sleep(1000);
+				Thread.sleep(SECONDS_BETWEEN_TESTS*1000);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
