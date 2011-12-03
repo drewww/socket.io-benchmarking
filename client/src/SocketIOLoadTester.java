@@ -5,13 +5,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.math.stat.descriptive.SummaryStatistics;
+
 
 public class SocketIOLoadTester extends Thread implements SocketIOClientEventListener {
 
 	public static final int STARTING_MESSAGES_PER_SECOND_RATE = 10;
 	public static final int SECONDS_TO_TEST_EACH_LOAD_STATE = 5;
 	public static final int MESSAGES_PER_SECOND_RAMP = 5;
-	public static final int SECONDS_BETWEEN_TESTS = 1;
+	public static final int SECONDS_BETWEEN_TESTS = 2;
 	
 	protected Set<SocketIOClient> clients = new HashSet<SocketIOClient>();
 	
@@ -24,6 +26,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	protected Integer numConnectionsMade = 0;
 	
 	protected List<Long> roundtripTimes;
+	private boolean postTestTimeout;
 	
 	protected SocketIOLoadTester(int concurrency) {
 		this.concurrency = concurrency;
@@ -67,16 +70,22 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			}
 			
 			// At this point, all messages have been sent so we should wait until they've all been received.
+			this.postTestTimeout = true;
 			synchronized(this) {
 				try {
-					this.wait();
+					this.wait(10000);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
 			
-			System.out.println(" passed");
+			if(this.postTestTimeout) {
+				System.out.println(" failed - not all messages received");
+				break;
+			} else {
+				this.processRoundtripStats();
+			}
 			currentMessagesPerSecond += MESSAGES_PER_SECOND_RAMP;
 			try {
 				Thread.sleep(SECONDS_BETWEEN_TESTS*1000);
@@ -85,6 +94,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 				e.printStackTrace();
 			}
 		}		
+		System.out.println("Shutting down.");
 	}
 	
 	protected void triggerChatMessages(int messagesPerSecond) {
@@ -97,6 +107,18 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 				clientsIterator = clients.iterator();
 			}
 		}
+	}
+	
+	protected SummaryStatistics processRoundtripStats() {
+		SummaryStatistics stats = new SummaryStatistics();
+		
+		for(Long roundtripTime : this.roundtripTimes) {
+			stats.addValue(roundtripTime);
+		}
+		
+		System.out.format(" n: %5d; min: %8.0f, mean: %8.0f; max: %8.0f, stdev: %8.0f\n", stats.getN(), stats.getMin(), stats.getMean(), stats.getMax(), stats.getStandardDeviation());
+		
+		return stats;
 	}
 	
 	/**
@@ -148,6 +170,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		
 		if(this.roundtripTimes.size() == SECONDS_TO_TEST_EACH_LOAD_STATE * currentMessagesPerSecond) {
 			synchronized(this) {
+				this.postTestTimeout = false;
 				this.notifyAll();
 			}
 		}
