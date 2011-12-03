@@ -59,14 +59,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			this.roundtripTimes = new ArrayList<Long>(SECONDS_TO_TEST_EACH_LOAD_STATE * currentMessagesPerSecond);
 			
 			for(int i=0; i<SECONDS_TO_TEST_EACH_LOAD_STATE; i++) {
-				this.triggerChatMessages(currentMessagesPerSecond);
-				
-				try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+				this.triggerChatMessagesOverTime(currentMessagesPerSecond, 1000);
 			}
 			
 			// At this point, all messages have been sent so we should wait until they've all been received.
@@ -97,16 +90,39 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		System.out.println("Shutting down.");
 	}
 	
-	protected void triggerChatMessages(int messagesPerSecond) {
+	protected void triggerChatMessagesOverTime(int totalMessages, long ms) {
+//		long timeAtStart = System.currentTimeMillis();
+
+		long msPerSend = ms / totalMessages;
+		
+		// We basically want to guarantee that this method is going to take exactly a second to run, so the messages are spread out across the full second. 
+		
 		Iterator<SocketIOClient> clientsIterator = this.clients.iterator();
-		for(int i=0; i<messagesPerSecond; i++) {
+		for(int i=0; i<totalMessages; i++) {
+			long messageStartTime = System.currentTimeMillis();
+			
 			SocketIOClient client = clientsIterator.next();
 			client.sendTimestampedChat();
 			
 			if(!clientsIterator.hasNext()) {
 				clientsIterator = clients.iterator();
 			}
+			
+			if(System.currentTimeMillis() - messageStartTime < msPerSend) {
+				try {
+					Thread.sleep(msPerSend - (System.currentTimeMillis() - messageStartTime));
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			} else {
+				System.out.println("Somehow took longer to send than we budgeted time for.");
+			}
 		}
+		
+		// Saw a little bit of drift here, but I'm going to say it's okay for now. Should take a look at it later. Didn't seem 100% monotonically increasing
+		// although I did see some general positive drift as the number of messages increased. Might have to do with integer wait values and rounding?
+//		System.out.println("Time duration at end: " + (System.currentTimeMillis() - timeAtStart) + " (target: " + ms + ")");
 	}
 	
 	protected SummaryStatistics processRoundtripStats() {
