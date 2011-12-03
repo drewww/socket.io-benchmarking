@@ -10,7 +10,7 @@ import org.apache.commons.math.stat.descriptive.SummaryStatistics;
 
 public class SocketIOLoadTester extends Thread implements SocketIOClientEventListener {
 
-	public static final int STARTING_MESSAGES_PER_SECOND_RATE = 10;
+	public static final int STARTING_MESSAGES_PER_SECOND_RATE = 50;
 	public static final int SECONDS_TO_TEST_EACH_LOAD_STATE = 5;
 	public static final int MESSAGES_PER_SECOND_RAMP = 5;
 	public static final int SECONDS_BETWEEN_TESTS = 2;
@@ -143,7 +143,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	public static void main(String[] args) {
 		// Just start the thread.
 		
-		SocketIOLoadTester tester = new SocketIOLoadTester(10);
+		SocketIOLoadTester tester = new SocketIOLoadTester(100);
 		tester.start();
 	}
 
