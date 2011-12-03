@@ -1,8 +1,13 @@
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.math.stat.descriptive.SummaryStatistics;
@@ -12,10 +17,16 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 
 	public static final int STARTING_MESSAGES_PER_SECOND_RATE = 1;
 	public static final int SECONDS_TO_TEST_EACH_LOAD_STATE = 10;
-	public static final int MESSAGES_PER_SECOND_RAMP = 1;
+
 	public static final int SECONDS_BETWEEN_TESTS = 1;
 	
-	public static final int POST_TEST_RECEPTION_TIMEOUT_WINDOW = 20000;
+	public static final int MESSAGES_RECEIVED_PER_SECOND_RAMP = 100;
+	
+	public static final int POST_TEST_RECEPTION_TIMEOUT_WINDOW = 5000;
+	
+//	public static final int[] concurrencyLevels = {1, 10, 25, 50, 100, 200, 300, 400, 500, 750, 1000, 1250, 1500, 2000};	
+	public static final int[] concurrencyLevels = {10, 25, 50};
+	
 	
 	protected Set<SocketIOClient> clients = new HashSet<SocketIOClient>();
 	
@@ -28,7 +39,10 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	protected Integer numConnectionsMade = 0;
 	
 	protected List<Long> roundtripTimes;
+	
 	private boolean postTestTimeout;
+	
+	private boolean testRunning;
 	
 	protected SocketIOLoadTester(int concurrency) {
 		this.concurrency = concurrency;
@@ -36,7 +50,69 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	
 	public synchronized void run() {
 		
+		BufferedWriter f = null;
+		try {
+				f =  new BufferedWriter(new FileWriter(System.currentTimeMillis() + ".log"));
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		
+		for(int i=0; i<concurrencyLevels.length; i++) {
+			this.concurrency = concurrencyLevels[i];
+
+			// Reset the failure switches.
+			this.lostConnection = false;
+			this.postTestTimeout = false;
+
+			
+			System.out.println("---------------- CONCURRENCY " + this.concurrency + " ----------------");
+			// This won't return until we get an ACK on all the connections.
+			this.numConnectionsMade = 0;
+			this.makeConnections(this.concurrency);
+			
+			Map<Integer, SummaryStatistics> summaryStats = this.performLoadTest();
+			
+			// shutdown all the clients
+			for(SocketIOClient c : this.clients) {
+				try {
+					c.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			
+			for(Integer messageRate : summaryStats.keySet()) {
+				SummaryStatistics stats = summaryStats.get(messageRate);
+				
+				try {
+					f.write(String.format("%d,%d,%d,%f,%f,%f,%f\n", this.concurrency, messageRate, stats.getN(), stats.getMin(), stats.getMean(), stats.getMax(), stats.getStandardDeviation()));
+					System.out.println("Wrote results of run to disk.");
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+				
+		try {
+			f.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return;
+	}
+	
+	protected void makeConnections(int numConnections) {
 		// Start the connections. Wait for all of them to connect then we go.
+		this.clients.clear();
+		
 		for(int i=0; i<this.concurrency; i++) {
 			SocketIOClient client = new SocketIOClient(SocketIOClient.getNewSocketURI("roar.media.mit.edu:8080"), this);
 			this.clients.add(client);
@@ -49,14 +125,19 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			System.out.println("Interrupted!");
 		}
 		System.out.println("Woken up - time to start load test!");
-		this.startLoadTest();
-		return;
 	}
 	
-	protected void startLoadTest() {
+	protected Map<Integer, SummaryStatistics> performLoadTest() {
 		// Actually run the test.
 		// Protocol is spend 3 seconds at each load level, then ramp up messages per second.
-		while(!lostConnection) {
+		Map<Integer, SummaryStatistics> statisticsForThisConcurrency = new HashMap<Integer, SummaryStatistics>();
+		
+		this.testRunning = true;
+		
+		// TODO Think about having this vary as an initial condition thing - for lower concurrencies, starting at 1 costs us a lot fo time to run the test.
+		this.currentMessagesPerSecond = STARTING_MESSAGES_PER_SECOND_RATE;
+		
+		while(!this.lostConnection && !this.postTestTimeout) {
 			System.out.print(concurrency + " connections at " + currentMessagesPerSecond + ": ");
 			
 			this.roundtripTimes = new ArrayList<Long>(SECONDS_TO_TEST_EACH_LOAD_STATE * currentMessagesPerSecond);
@@ -78,13 +159,14 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			
 			if(this.postTestTimeout) {
 				System.out.println(" failed - not all messages received in " + POST_TEST_RECEPTION_TIMEOUT_WINDOW + "ms");
-				break;
 			} else {
-				this.processRoundtripStats();
+				// Grab and store the summary statistics for this run.
+				statisticsForThisConcurrency.put(currentMessagesPerSecond, this.processRoundtripStats());
 				
 				// TODO Do a check here - if we saw a mean roundtrip time above 100ms or so, that's the congestion point and we should record that as the "knee" of the curve, basically.
 			}
-			currentMessagesPerSecond += MESSAGES_PER_SECOND_RAMP;
+			currentMessagesPerSecond += MESSAGES_RECEIVED_PER_SECOND_RAMP/this.concurrency;
+
 			try {
 				Thread.sleep(SECONDS_BETWEEN_TESTS*1000);
 			} catch (InterruptedException e) {
@@ -92,8 +174,9 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 				e.printStackTrace();
 			}
 		}		
-		System.out.println("Shutting down.");
-		return;
+
+		this.testRunning = false;
+		return statisticsForThisConcurrency;
 	}
 	
 	protected void triggerChatMessagesOverTime(int totalMessages, long ms) {
@@ -125,7 +208,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 				// TODO If we were smart, we would start shaving time off the NEXT wait to make up for this.
 				// That's also what we would do to help account for the drift - if total time taken is larger
 				// than what it should be, wait less on the next one.
-				System.err.println("Somehow took longer to send than we budgeted time for.");
+				System.err.print("d");
 			}
 		}
 		
@@ -171,9 +254,11 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 
 	@Override
 	public void onClose() {
-		lostConnection = true;
-		System.out.println(" failed!");
-		System.out.println("Lost a connection. Shutting down.");
+		if(this.testRunning) {
+			lostConnection = true;
+			System.out.println(" failed!");
+			System.out.println("Lost a connection. Shutting down.");
+		}
 	}
 
 	@Override
