@@ -10,10 +10,12 @@ import org.apache.commons.math.stat.descriptive.SummaryStatistics;
 
 public class SocketIOLoadTester extends Thread implements SocketIOClientEventListener {
 
-	public static final int STARTING_MESSAGES_PER_SECOND_RATE = 50;
-	public static final int SECONDS_TO_TEST_EACH_LOAD_STATE = 5;
-	public static final int MESSAGES_PER_SECOND_RAMP = 5;
-	public static final int SECONDS_BETWEEN_TESTS = 2;
+	public static final int STARTING_MESSAGES_PER_SECOND_RATE = 1;
+	public static final int SECONDS_TO_TEST_EACH_LOAD_STATE = 10;
+	public static final int MESSAGES_PER_SECOND_RAMP = 1;
+	public static final int SECONDS_BETWEEN_TESTS = 1;
+	
+	public static final int POST_TEST_RECEPTION_TIMEOUT_WINDOW = 20000;
 	
 	protected Set<SocketIOClient> clients = new HashSet<SocketIOClient>();
 	
@@ -48,6 +50,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		}
 		System.out.println("Woken up - time to start load test!");
 		this.startLoadTest();
+		return;
 	}
 	
 	protected void startLoadTest() {
@@ -66,7 +69,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			this.postTestTimeout = true;
 			synchronized(this) {
 				try {
-					this.wait(10000);
+					this.wait(POST_TEST_RECEPTION_TIMEOUT_WINDOW);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -74,10 +77,12 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			}
 			
 			if(this.postTestTimeout) {
-				System.out.println(" failed - not all messages received");
+				System.out.println(" failed - not all messages received in " + POST_TEST_RECEPTION_TIMEOUT_WINDOW + "ms");
 				break;
 			} else {
 				this.processRoundtripStats();
+				
+				// TODO Do a check here - if we saw a mean roundtrip time above 100ms or so, that's the congestion point and we should record that as the "knee" of the curve, basically.
 			}
 			currentMessagesPerSecond += MESSAGES_PER_SECOND_RAMP;
 			try {
@@ -88,6 +93,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			}
 		}		
 		System.out.println("Shutting down.");
+		return;
 	}
 	
 	protected void triggerChatMessagesOverTime(int totalMessages, long ms) {
@@ -116,7 +122,10 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 					e.printStackTrace();
 				}
 			} else {
-				System.out.println("Somehow took longer to send than we budgeted time for.");
+				// TODO If we were smart, we would start shaving time off the NEXT wait to make up for this.
+				// That's also what we would do to help account for the drift - if total time taken is larger
+				// than what it should be, wait less on the next one.
+				System.err.println("Somehow took longer to send than we budgeted time for.");
 			}
 		}
 		
@@ -132,7 +141,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			stats.addValue(roundtripTime);
 		}
 		
-		System.out.format(" n: %5d; min: %8.0f, mean: %8.0f; max: %8.0f, stdev: %8.0f\n", stats.getN(), stats.getMin(), stats.getMean(), stats.getMax(), stats.getStandardDeviation());
+		System.out.format(" n: %5d min: %8.0f  mean: %8.0f   max: %8.0f   stdev: %8.0f\n", stats.getN(), stats.getMin(), stats.getMean(), stats.getMax(), stats.getStandardDeviation());
 		
 		return stats;
 	}
@@ -143,7 +152,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	public static void main(String[] args) {
 		// Just start the thread.
 		
-		SocketIOLoadTester tester = new SocketIOLoadTester(100);
+		SocketIOLoadTester tester = new SocketIOLoadTester(2000);
 		tester.start();
 	}
 
