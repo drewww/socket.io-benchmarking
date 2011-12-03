@@ -24,8 +24,10 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	
 	public static final int POST_TEST_RECEPTION_TIMEOUT_WINDOW = 5000;
 	
-//	public static final int[] concurrencyLevels = {1, 10, 25, 50, 100, 200, 300, 400, 500, 750, 1000, 1250, 1500, 2000};	
-	public static final int[] concurrencyLevels = {10, 25, 50};
+	public static final int[] concurrencyLevels = {1, 10, 25, 50, 100, 200, 300, 400, 500, 750, 1000, 1250, 1500, 2000};
+	private static final int MAX_MESSAGES_PER_SECOND_SENT = 500;	
+
+	//	public static final int[] concurrencyLevels = {10, 25, 50};
 	
 	
 	protected Set<SocketIOClient> clients = new HashSet<SocketIOClient>();
@@ -44,8 +46,8 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	
 	private boolean testRunning;
 	
-	protected SocketIOLoadTester(int concurrency) {
-		this.concurrency = concurrency;
+	protected SocketIOLoadTester() {
+		
 	}
 	
 	public synchronized void run() {
@@ -137,7 +139,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		// TODO Think about having this vary as an initial condition thing - for lower concurrencies, starting at 1 costs us a lot fo time to run the test.
 		this.currentMessagesPerSecond = STARTING_MESSAGES_PER_SECOND_RATE;
 		
-		while(!this.lostConnection && !this.postTestTimeout) {
+		while(!this.lostConnection && !this.postTestTimeout && currentMessagesPerSecond < MAX_MESSAGES_PER_SECOND_SENT) {
 			System.out.print(concurrency + " connections at " + currentMessagesPerSecond + ": ");
 			
 			this.roundtripTimes = new ArrayList<Long>(SECONDS_TO_TEST_EACH_LOAD_STATE * currentMessagesPerSecond);
@@ -166,7 +168,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 				// TODO Do a check here - if we saw a mean roundtrip time above 100ms or so, that's the congestion point and we should record that as the "knee" of the curve, basically.
 			}
 			currentMessagesPerSecond += MESSAGES_RECEIVED_PER_SECOND_RAMP/this.concurrency;
-
+			
 			try {
 				Thread.sleep(SECONDS_BETWEEN_TESTS*1000);
 			} catch (InterruptedException e) {
@@ -235,7 +237,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	public static void main(String[] args) {
 		// Just start the thread.
 		
-		SocketIOLoadTester tester = new SocketIOLoadTester(2000);
+		SocketIOLoadTester tester = new SocketIOLoadTester();
 		tester.start();
 	}
 
