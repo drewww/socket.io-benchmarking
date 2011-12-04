@@ -24,7 +24,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	
 	public static final int POST_TEST_RECEPTION_TIMEOUT_WINDOW = 5000;
 	
-	public static final int[] concurrencyLevels = {1,2,3, 200, 300, 400, 500, 750, 1000, 1250, 1500, 2000};
+	public static final int[] concurrencyLevels = {200, 300, 400, 500, 750, 1000, 1250, 1500, 2000};
 	private static final int MAX_MESSAGES_PER_SECOND_SENT = 800;	
 
 	//	public static final int[] concurrencyLevels = {10, 25, 50};
@@ -75,7 +75,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			this.numConnectionsMade = 0;
 			this.makeConnections(this.concurrency);
 			
-			Map<Integer, SummaryStatistics> summaryStats = this.performLoadTest();
+			Map<Double, SummaryStatistics> summaryStats = this.performLoadTest();
 			
 			// shutdown all the clients
 			for(SocketIOClient c : this.clients) {
@@ -88,11 +88,11 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			}
 			
 			
-			for(Integer messageRate : summaryStats.keySet()) {
+			for(Double messageRate : summaryStats.keySet()) {
 				SummaryStatistics stats = summaryStats.get(messageRate);
 				
 				try {
-					f.write(String.format("%d,%d,%d,%f,%f,%f,%f\n", this.concurrency, messageRate, stats.getN(), stats.getMin(), stats.getMean(), stats.getMax(), stats.getStandardDeviation()));
+					f.write(String.format("%d,%f,%d,%f,%f,%f,%f\n", this.concurrency, messageRate, stats.getN(), stats.getMin(), stats.getMean(), stats.getMax(), stats.getStandardDeviation()));
 					System.out.println("Wrote results of run to disk.");
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
@@ -129,10 +129,10 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		System.out.println("Woken up - time to start load test!");
 	}
 	
-	protected Map<Integer, SummaryStatistics> performLoadTest() {
+	protected Map<Double, SummaryStatistics> performLoadTest() {
 		// Actually run the test.
 		// Protocol is spend 3 seconds at each load level, then ramp up messages per second.
-		Map<Integer, SummaryStatistics> statisticsForThisConcurrency = new HashMap<Integer, SummaryStatistics>();
+		Map<Double, SummaryStatistics> statisticsForThisConcurrency = new HashMap<Double, SummaryStatistics>();
 		
 		this.testRunning = true;
 		
@@ -169,7 +169,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 				System.out.println(" failed - not all messages received in " + POST_TEST_RECEPTION_TIMEOUT_WINDOW + "ms");
 			} else {
 				// Grab and store the summary statistics for this run.
-				statisticsForThisConcurrency.put(currentMessagesPerSecond, this.processRoundtripStats());
+				statisticsForThisConcurrency.put(overallEffectiveRate, this.processRoundtripStats());
 				
 				// TODO Do a check here - if we saw a mean roundtrip time above 100ms or so, that's the congestion point and we should record that as the "knee" of the curve, basically.
 			}
