@@ -24,8 +24,8 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	
 	public static final int POST_TEST_RECEPTION_TIMEOUT_WINDOW = 5000;
 	
-	public static final int[] concurrencyLevels = {200, 300, 400, 500, 750, 1000, 1250, 1500, 2000};
-	private static final int MAX_MESSAGES_PER_SECOND_SENT = 500;	
+	public static final int[] concurrencyLevels = {1,2,3, 200, 300, 400, 500, 750, 1000, 1250, 1500, 2000};
+	private static final int MAX_MESSAGES_PER_SECOND_SENT = 800;	
 
 	//	public static final int[] concurrencyLevels = {10, 25, 50};
 	
@@ -138,6 +138,8 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		
 		// TODO Think about having this vary as an initial condition thing - for lower concurrencies, starting at 1 costs us a lot fo time to run the test.
 		this.currentMessagesPerSecond = STARTING_MESSAGES_PER_SECOND_RATE;
+		double effectiveRate = 0;
+		double overallEffectiveRate = 0;
 		
 		while(!this.lostConnection && !this.postTestTimeout && currentMessagesPerSecond < MAX_MESSAGES_PER_SECOND_SENT) {
 			System.out.print(concurrency + " connections at " + currentMessagesPerSecond + ": ");
@@ -145,8 +147,12 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			this.roundtripTimes = new ArrayList<Long>(SECONDS_TO_TEST_EACH_LOAD_STATE * currentMessagesPerSecond);
 			
 			for(int i=0; i<SECONDS_TO_TEST_EACH_LOAD_STATE; i++) {
-				this.triggerChatMessagesOverTime(currentMessagesPerSecond, 1000);
+				effectiveRate = this.triggerChatMessagesOverTime(currentMessagesPerSecond, 1000);
+				overallEffectiveRate+=effectiveRate;
 			}
+			
+			overallEffectiveRate = overallEffectiveRate/ SECONDS_TO_TEST_EACH_LOAD_STATE;
+			System.out.print(String.format(" rate: %.3f ", overallEffectiveRate));
 			
 			// At this point, all messages have been sent so we should wait until they've all been received.
 			this.postTestTimeout = true;
@@ -183,10 +189,13 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		return statisticsForThisConcurrency;
 	}
 	
-	protected void triggerChatMessagesOverTime(int totalMessages, long ms) {
-//		long timeAtStart = System.currentTimeMillis();
+	protected double triggerChatMessagesOverTime(int totalMessages, long ms) {
+		long startTime = System.currentTimeMillis();
 
-		long msPerSend = ms / totalMessages;
+		long baseMsPerSend = ms / totalMessages;
+		long adjustedMsPerSend = baseMsPerSend;
+		
+		long delta = 0;
 		
 		// We basically want to guarantee that this method is going to take exactly a second to run, so the messages are spread out across the full second. 
 		
@@ -200,20 +209,24 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 			if(!clientsIterator.hasNext()) {
 				clientsIterator = clients.iterator();
 			}
-			
-			// If the time it's taken to send the message is less than the time allocated to send to send each message,
-			// then sleep for the difference to make it up. 
-			if((System.currentTimeMillis() - messageStartTime) < msPerSend) {
+
+
+			//	    how long we want it to take	      how long it took to send this message
+			delta = baseMsPerSend -                      (System.currentTimeMillis() -messageStartTime);
+					
+			// If delta is positive, then we have time to spare before the next message. Sleep it off.
+			if(delta>=0) {
 				try {
-					long sleepTime = msPerSend - (System.currentTimeMillis() - messageStartTime);
 					
 					// This is for the weird situation when system time ticks between the test and the assignment.
 					// We split them for accuracy, but if it goes negative, sleep throws an exception.
-					if(sleepTime < 0) {
-						sleepTime = 0;
+					if(delta > 0) {
+						Thread.sleep(delta);
 					}
 					
-					Thread.sleep(sleepTime);
+					// If we came in under the limit, then figure the sleep put us back on target and
+					// we should default to the normal duration window. 
+					adjustedMsPerSend = baseMsPerSend;
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -223,18 +236,24 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 				// Basically, if this happens more than once or twice it means we're sending as fast as possible
 				// and we shouldn't be delaying at all. The problem with this is that in a lot of cases this means we can't
 				// actually cause the server to jam because we're not moving fast enough.
+								
+				// Keep track of how many ms behind we were.
+				System.err.print(delta + " ");
 				
+				// now adjust the time for the next one. delta will be negative if we're in this branch
+				adjustedMsPerSend = baseMsPerSend + delta;
 				
-				// TODO If we were smart, we would start shaving time off the NEXT wait to make up for this.
-				// That's also what we would do to help account for the drift - if total time taken is larger
-				// than what it should be, wait less on the next one.
-				System.err.print("d");
+				// Clamp it at 0. Once we hit that point it'll basically just scream 
+				if(adjustedMsPerSend < 0) adjustedMsPerSend = 0;
 			}
 		}
 		
 		// Saw a little bit of drift here, but I'm going to say it's okay for now. Should take a look at it later. Didn't seem 100% monotonically increasing
 		// although I did see some general positive drift as the number of messages increased. Might have to do with integer wait values and rounding?
 //		System.out.println("Time duration at end: " + (System.currentTimeMillis() - timeAtStart) + " (target: " + ms + ")");
+		
+		long duration = System.currentTimeMillis() - startTime;
+		return new Integer(totalMessages).doubleValue()/((duration)/1000.0);
 	}
 	
 	protected SummaryStatistics processRoundtripStats() {
