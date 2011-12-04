@@ -212,7 +212,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 
 
 			//	    how long we want it to take	      how long it took to send this message
-			delta = baseMsPerSend -                      (System.currentTimeMillis() -messageStartTime);
+			delta = adjustedMsPerSend -                      (System.currentTimeMillis() -messageStartTime);
 					
 			// If delta is positive, then we have time to spare before the next message. Sleep it off.
 			if(delta>=0) {
