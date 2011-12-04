@@ -18,13 +18,13 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	public static final int STARTING_MESSAGES_PER_SECOND_RATE = 1;
 	public static final int SECONDS_TO_TEST_EACH_LOAD_STATE = 10;
 
-	public static final int SECONDS_BETWEEN_TESTS = 1;
+	public static final int SECONDS_BETWEEN_TESTS = 2;
 	
 	public static final int MESSAGES_RECEIVED_PER_SECOND_RAMP = 100;
 	
 	public static final int POST_TEST_RECEPTION_TIMEOUT_WINDOW = 5000;
 	
-	public static final int[] concurrencyLevels = {1, 10, 25, 50, 100, 200, 300, 400, 500, 750, 1000, 1250, 1500, 2000};
+	public static final int[] concurrencyLevels = {200, 300, 400, 500, 750, 1000, 1250, 1500, 2000};
 	private static final int MAX_MESSAGES_PER_SECOND_SENT = 500;	
 
 	//	public static final int[] concurrencyLevels = {10, 25, 50};
@@ -167,7 +167,9 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 				
 				// TODO Do a check here - if we saw a mean roundtrip time above 100ms or so, that's the congestion point and we should record that as the "knee" of the curve, basically.
 			}
-			currentMessagesPerSecond += MESSAGES_RECEIVED_PER_SECOND_RAMP/this.concurrency;
+			
+			// Make sure to always increase by at least 1 message per second. 
+			currentMessagesPerSecond += Math.max(1, MESSAGES_RECEIVED_PER_SECOND_RAMP/this.concurrency);
 			
 			try {
 				Thread.sleep(SECONDS_BETWEEN_TESTS*1000);
@@ -199,14 +201,30 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 				clientsIterator = clients.iterator();
 			}
 			
-			if(System.currentTimeMillis() - messageStartTime < msPerSend) {
+			// If the time it's taken to send the message is less than the time allocated to send to send each message,
+			// then sleep for the difference to make it up. 
+			if((System.currentTimeMillis() - messageStartTime) < msPerSend) {
 				try {
-					Thread.sleep(msPerSend - (System.currentTimeMillis() - messageStartTime));
+					long sleepTime = msPerSend - (System.currentTimeMillis() - messageStartTime);
+					
+					// This is for the weird situation when system time ticks between the test and the assignment.
+					// We split them for accuracy, but if it goes negative, sleep throws an exception.
+					if(sleepTime < 0) {
+						sleepTime = 0;
+					}
+					
+					Thread.sleep(sleepTime);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			} else {
+				// If we end up in this branch, it's because it took LONGER to send than the time we have allocated. 
+				// Basically, if this happens more than once or twice it means we're sending as fast as possible
+				// and we shouldn't be delaying at all. The problem with this is that in a lot of cases this means we can't
+				// actually cause the server to jam because we're not moving fast enough.
+				
+				
 				// TODO If we were smart, we would start shaving time off the NEXT wait to make up for this.
 				// That's also what we would do to help account for the drift - if total time taken is larger
 				// than what it should be, wait less on the next one.
