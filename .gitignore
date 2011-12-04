@@ -1,0 +1,6 @@
+bin
+*.log
+*~
+.DS_Store
+misc
+node_modules
