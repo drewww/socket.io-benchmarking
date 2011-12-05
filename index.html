@@ -55,13 +55,52 @@
 
 <p><b>TL;DR</b> If you want to bypass the full analysis, heres the punchline: I found that the main performance bottleneck is <i>sending</i> messages, not holding connections open or receiving messages. On a 3.3 MHz Xeon X5470 using one core, the max messages-sent-per-second rate is around 8,000&ndash;10,000 depending on the concurrency level.</p>
 	
-<h2>Test Setup</h2>
+<h2>Testing Framework</h2>
 
 
+<p>There are (unsurprisingly) two bits of software to run this test. The server is extremely simply, and looks like this:</p>
+
+<pre>
+var connectedUsersCount = 0;
+var messagesPerSecond = 0;
+
+io.sockets.on('connection', function(socket) {
+    connectedUsersCount++;
+    
+    socket.on('chat', function(data) {
+        // logger.info("chat message arrived");
+        io.sockets.emit('chat', {text:data.text});
+        
+        messagesPerSecond++;
+    });
+
+    socket.on('disconnect', function(data) {
+        connectedUsersCount--;
+    });
+});
+
+setTimeout(logStatus, 1000);
+
+function logStatus() {
+    setTimeout(logStatus, 1000);
+    
+    logger.info("users: " + connectedUsersCount + "\tmessagesPerSecond: " + messagesPerSecond);
+    messagesPerSecond = 0;
+}
+</pre>
+
+<p>The core behavior of the server is simply that whenever it receives a chat message, it broadcasts that message back to all connected users. The rest of the code handles logging, and doesn't have a significant impact on performance.</p>
+
+<p>The test client is quite a bit more complicated so I won't quote it all here, but there are a few aspects of its behavior that are important for understanding the results. If we want to test concurrency level 100, the client opens 100 independent sockets to the server. After all sockets have been opened, the client tries sends messages to the server (rotating clients) at a specified rate for ten seconds. It waits to receive all those messages to come back from the server, and then ramps up the message rate and repeats the process. A test fails either when the server closes a socket (which happens at very high sustained loads - more on this later) or when it takes longer than 5 seconds for the client to receive the broadcasted version of every message it sent. The client keeps track of how long it was between when it sent the message and received it, which lets us both measure user-relevant performance (e.g. how long between when you send a message to the server and you can get a response) and see failure coming before we hit one of the true failure cases.</p>
+
+
+
+	
+<!-- <p>This whole adventure was motivated by trying to figure out if a <a href="http://roar.media.mit.edu/">prototype large-scale chat system</a> I'd been working on was going to need to be radically re-architected to scale it up for events with 5,000 to 10,000 people. So I was particularly concerned with message sending rates. How expensive would it be to broadcast a message to every connected user?</p>
 
 
 <p>	As I was trying to evaluate the performance of a prototype for a <a href="http://roar.media.mit.edu">new project of mine</a> I was having a hard time figuring out what exactly the bottlenecks in my system were going to be. There's been some nice work in this space already, Peter Griess has a handy tool called <a href="http://blog.std.in/2010/09/24/benchmarking-web-socket-servers/">wsbench</a> </p>
-    
+     -->
 
     
 
