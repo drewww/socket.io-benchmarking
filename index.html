@@ -57,41 +57,14 @@
 	
 <h2>Testing Framework</h2>
 
+<p> The testing setup is pretty simple, but is worth a quick description. The server is the worlds' most simple server. It's an echo-broadcast server: whenever it receives a message, it broadcasts that message to every connected client.</p>
 
-<p>There are (unsurprisingly) two bits of software to run this test. The server is extremely simply, and looks like this:</p>
+<p>The client is a little more complicated, but not much. The main metric it collects is the time that elapses between when it sends a message to the server and when it receives that message back in its broadcasted form. The client gathers the mean response times across a range of concurrency levels and message sending rates, which forms the data set for the analysis below. If the server ever drops a connection (which happens at high loads - more on this later) or it takes longer than five seconds for all the sent-messages to be received after sending stops, then the test is over for that concurrency level.</p>
 
-<pre>
-var connectedUsersCount = 0;
-var messagesPerSecond = 0;
+<h2>Results</h2>
 
-io.sockets.on('connection', function(socket) {
-    connectedUsersCount++;
-    
-    socket.on('chat', function(data) {
-        // logger.info("chat message arrived");
-        io.sockets.emit('chat', {text:data.text});
-        
-        messagesPerSecond++;
-    });
 
-    socket.on('disconnect', function(data) {
-        connectedUsersCount--;
-    });
-});
 
-setTimeout(logStatus, 1000);
-
-function logStatus() {
-    setTimeout(logStatus, 1000);
-    
-    logger.info("users: " + connectedUsersCount + "\tmessagesPerSecond: " + messagesPerSecond);
-    messagesPerSecond = 0;
-}
-</pre>
-
-<p>The core behavior of the server is simply that whenever it receives a chat message, it broadcasts that message back to all connected users. The rest of the code handles logging, and doesn't have a significant impact on performance.</p>
-
-<p>The test client is quite a bit more complicated so I won't quote it all here, but there are a few aspects of its behavior that are important for understanding the results. If we want to test concurrency level 100, the client opens 100 independent sockets to the server. After all sockets have been opened, the client tries sends messages to the server (rotating clients) at a specified rate for ten seconds. It waits to receive all those messages to come back from the server, and then ramps up the message rate and repeats the process. A test fails either when the server closes a socket (which happens at very high sustained loads - more on this later) or when it takes longer than 5 seconds for the client to receive the broadcasted version of every message it sent. The client keeps track of how long it was between when it sent the message and received it, which lets us both measure user-relevant performance (e.g. how long between when you send a message to the server and you can get a response) and see failure coming before we hit one of the true failure cases.</p>
 
 
 
