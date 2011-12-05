@@ -39,7 +39,7 @@
   <div id="container">
 
     <h1><a href="https://github.com/drewww/socket.io-benchmarking">Practical socket.io Benchmarking</a>
-      <span class="small">by Drew Harry</span></h1>
+      <span class="small"><a href="http://web.media.mit.edu/~dharry/">Drew Harry</a></span></h1>
 
 
 	<p>
@@ -52,7 +52,7 @@
 	<li>sending lots of messages</li>
 </ul>
 
-<p>There's been some nice work at figuring out how many connections <a href="http://blog.mixu.net/2011/11/22/performance-benchmarking-socket-io-0-8-7-0-7-11-and-0-6-17-and-nodes-native-tcp/">a server might be able to support</a>, but that only knocks out one of our potential bottlenecks. How do we figure out whether holding simultaneous connections open is the most intensive part of scaling up a <span class="inline">socket.io</span> server? And if the bottleneck is message-related, what's a good rule of thumb for when you're going to need to move beyond a single-process to scale?</p>
+<p>There's been some nice work at figuring out how many connections <a href="http://blog.mixu.net/2011/11/22/performance-benchmarking-socket-io-0-8-7-0-7-11-and-0-6-17-and-nodes-native-tcp/">a server might be able to support</a>, but that only knocks out one of our potential bottlenecks. How do we figure out whether holding simultaneous connections open is the most intensive part of scaling up a <span class="inline">socket.io</span> server? And if the bottleneck is message-related, what's a good rule of thumb for when you're going to need to move beyond a single-process model to scale up?</p>
 
 <p>I'm going to be looking primarily at the cost to sending messages, not the cost of receiving messages. My instinct is that the vast majority of <span class="inline">socket.io</span> applications will have access patterns that involve a lot more sending than receiving, so this is a reasonable focus. In my case, I was interested in chat systems, but even in other data-oriented systems I suspect sending will outweigh receiving by a substantial amount.</p>
 
@@ -109,6 +109,8 @@
 
 <p>This is all speculative, though. I haven't actually written that part of the system yet, but based on this data it seems to me like a reasonable strategy.</p>
 	
+<h2>Open Questions</h2>
+Dependency on message size, comparison to lower-level protocols, measuring sending versus receiving...?
 
 <h2>Acknowledgments</h2>
 
