@@ -38,10 +38,10 @@ for concurrency = concurrencyLevels'
     % there are a few different graph options:
     
     %h = semilogy(results(:, 2), results(:, 5));    
-    %h = semilogy(results(:, 2).*results(:, 1), results(:, 5));
+    h = semilogy(results(:, 2).*results(:, 1), results(:, 5));
     
     %h = plot(results(:, 2), results(:, 5));    
-    h = plot(results(:, 2).*results(:, 1), results(:, 5));
+    %h = plot(results(:, 2).*results(:, 1), results(:, 5));
 
     set(h, 'LineWidth', 1.5);
     set(h, 'Color', colors(i, :));
@@ -54,3 +54,4 @@ set(h, 'FontSize', 14);
 h = ylabel('mean roundtrip time');
 set(gca, 'FontSize', 14);
 
+legend(concurrencyLevels');
