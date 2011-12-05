@@ -103,9 +103,16 @@
 
 <h2>So What?</h2>
 
-<p>Ultimately, I spent a bunch of time figuring this out because I wanted to ask a very practical question: Where should I focus my optimization efforts? It's clear to me now that I have to be cautious with how often I use <span class="inline">io.sockets.emit</span> or <span class="inline">io.sockets.in</span>.
+<p>Ultimately, I spent a bunch of time figuring this out because I wanted to ask a very practical question: Where should I focus my optimization efforts? It's clear to me now that I have to be cautious with how often I use <span class="inline">io.sockets.emit</span> or <span class="inline">io.sockets.in</span>. If I want to be able to support 5,000 concurrent users, a broadcast every second will use up basically half of my messaging capacity. If I have a chat room with 200 people in it sending a message a second on average, that's only about 2% of my capacity.</p>
+
+<p>When you do need to start scaling, this also suggests a plan of attack. You can split off a thin communication layer that keeps sockets open for you and handles sending and receiving and isolate a huge amount of the load. With a load balancer you can spin up a bunch of these instances (even on the same box - one per core) and connect everything up with something like <a href="http://www.rabbitmq.com/">rabbitMQ</a>. Then just replace your calls to <span class="inline">emit</span> with something that talks to the messaging queue and you should be set. By keeping all the socket-handling work off the main logic core, you can avoid doing any trickier work like partitioning your actual logic until later.</p>
+
+<p>This is all speculative, though. I haven't actually written that part of the system yet, but based on this data it seems to me like a reasonable strategy.</p>
 	
-	
+
+<h2>Acknowledgments</h2>
+
+Many thanks to <a href="http://tirl.org/">Charlie DeTar</a> and <a href="https://twitter.com/#!/jonchambers">Jon Chambers</a> for their help in thinking about this problem! Couldn't have done it without them.
 
 	
 	
