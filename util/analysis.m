@@ -9,65 +9,48 @@ data = sortrows(data, [1, 2]);
 % now we want to make a graph that charts
 concurrencyLevels = unique(data(:, 1))
 
-subplot(2, 2, 1);
+% color setup
+colors = [11, 12, 20;
+23, 23, 35;
+33, 34, 47;
+43, 43, 59;
+52, 53, 71;
+60, 61, 83;
+69, 70, 92;
+77, 78, 103;
+85, 86, 113;
+92, 94, 123;
+100, 101, 132;
+108, 111, 139;
+115, 121, 147;
+122, 131, 153;
+129, 139, 160];
+colors = colors/255;
 
+
+i=1;
 for concurrency = concurrencyLevels'
     % get all the data for that concurrency level
     concurrency
     results = data(find(data(:, 1)==concurrency), :);
     
-    semilogy(results(:, 2), results(:, 5));
     
+    % there are a few different graph options:
+    
+    %h = semilogy(results(:, 2), results(:, 5));    
+    %h = semilogy(results(:, 2).*results(:, 1), results(:, 5));
+    
+    %h = plot(results(:, 2), results(:, 5));    
+    h = plot(results(:, 2).*results(:, 1), results(:, 5));
+
+    set(h, 'LineWidth', 1.5);
+    set(h, 'Color', colors(i, :));
+    i=i+1;
     hold on
 end
 
-xlabel('messages sent per second');
-ylabel('mean roundtrip time');
-
-
-subplot(2, 2, 2);
-for concurrency = concurrencyLevels'
-    % get all the data for that concurrency level
-    concurrency
-    results = data(find(data(:, 1)==concurrency), :);
-    
-    semilogy(results(:, 2).*results(:, 1), results(:, 5));
-    
-    hold on
-end
-
-xlabel('messages received per second');
-ylabel('mean roundtrip time');
-
-
-
-subplot(2, 2, 3);
-for concurrency = concurrencyLevels'
-    % get all the data for that concurrency level
-    concurrency
-    results = data(find(data(:, 1)==concurrency), :);
-    
-    plot(results(:, 2), results(:, 5));
-    
-    hold on
-end
-
-xlabel('messages sent per second');
-ylabel('mean roundtrip time');
-
-
-
-subplot(2, 2, 4);
-for concurrency = concurrencyLevels'
-    % get all the data for that concurrency level
-    concurrency
-    results = data(find(data(:, 1)==concurrency), :);
-    
-    plot(results(:, 2).*results(:, 1), results(:, 5));
-    
-    hold on
-end
-
-xlabel('messages received per second');
-ylabel('mean roundtrip time');
+h = xlabel('messages sent per second');
+set(h, 'FontSize', 14);
+h = ylabel('mean roundtrip time');
+set(gca, 'FontSize', 14);
 
