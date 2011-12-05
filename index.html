@@ -84,15 +84,20 @@
 
 <img width="100%" src="img/sent-per-second-log.png">
 
-<p>I want to focus your attention on the pre-jamming part of this graph. What we can see here is that higher concurrency levels <i>do</i> add load to the server. When you're at a concurrency level of 1,000, mean roundtrip times are always longer than when you're at lower concurrency levels and you do jam slightly sooner. This different is not that dramatic, though. Even at 1,000 concurrency, mean roundtrip times are on the order of 100ms. That's not amazing, but it's certainly manageable.</p>
+<p>I want to focus your attention on the pre-jamming part of this graph. What we can see here is that higher concurrency levels <i>do</i> add load to the server. When you're at a concurrency level of 1,000, mean roundtrip times are always longer than when you're at lower concurrency levels and you do jam slightly sooner. This different is not that dramatic, though. Even at 1,000 concurrency, mean roundtrip times are on the order of 100ms. That's not amazing, but it's certainly manageable and it stays pretty much constant until you hit the jamming threshold. </p>
 
 <h2>Analysis</h2>
-
-<p>There are a few major take-away messages from this data that I think will be of practical importance to people architecting and designing node and socket.io applications. 
 	
 <p>There's been a lot of conversation about the relative performance of single-threaded versus multiple-threaded applications. I'm not doing a direct comparison here, but nonetheless I think there are some interesting lessons.</p>
 
+<p>In a single-threaded environment like node, scheduling tasks is handled with an event queue. Tasks are pushed onto the queue and executed (it seems) more or less in the order they're added. When we start to see rising roundtrip times, it means we've started adding more tasks onto the queue than can be processed in a second. I've been calling that phase "jamming." Once you hit that point, performance is going to very rapidly degrade until the rate of new tasks falls below the jamming threshold. Even then, it'll take a while to clear out the queue and get back to acceptable performance. Perhaps even more troubling, when the queue is being jammed, setTimeout seems to stop working reliably; you can schedule a task 1000ms into the future but if the queue is jammed that task seems to wait more or less until the queue clears.<p>
 
+<p>This is not necessarily all bad news. It's not like a multi-threaded model performs way better if you're asking the CPU to do more work per second than it can. Both modes fail in problematic ways. But in very high load situations with multiple threads, the scheduler at least has the ability to schedule high priority threads that might be able to more effectively recover from the situation, while in node I'm not really sure what I can do.</p>
+
+<p>On the plus side, performance in non-jammed situations is superb. Up until you jam, you can send even relatively large amounts of messages very quickly. In practice, you probably want your application to be well below the jamming limit because recovering can be difficult.</p>
+
+<p>The task queue also explains why we see longer roundtrip times at higher concurrency levels, even at very low messaging rates. There seems to be a certain amount of periodic CPU overhead to keeping sockets open that needs to happen more or less all the time. If a bunch those tasks are queued up when a message arrives, it's not going to get processed until socket upkeep is done. This pushes up mean roundtrip times. Really, any periodic task your system needs to do (and most systems will have something in this category) will have a similar effect on your baseline roundtrip performance; below the jamming threshold, mean roundtrip times seem to me to be a reasonable measure of how full the task queue tends to be. Above the jamming threshold, these periodic tasks simply don't get processed in time. In socket.io's case, if you jam the server, it will start dropping connections indiscriminately because it can't get its periodic upkeep executed in time.</p>
+	
 	
 <!-- <p>This whole adventure was motivated by trying to figure out if a <a href="http://roar.media.mit.edu/">prototype large-scale chat system</a> I'd been working on was going to need to be radically re-architected to scale it up for events with 5,000 to 10,000 people. So I was particularly concerned with message sending rates. How expensive would it be to broadcast a message to every connected user?</p>
 
