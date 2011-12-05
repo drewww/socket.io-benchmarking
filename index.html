@@ -8,7 +8,7 @@
   <style type="text/css">
     body {
       margin-top: 1.0em;
-      background-color: #E3EDED;
+      background-color: #ffffff;
       font-family: Helvetica, Arial, FreeSans, san-serif;
       color: #0A0A10;
     }
@@ -16,12 +16,12 @@
       margin: 0 auto;
       width: 700px;
     }
-    h1 { font-size: 3.8em; color: #515171; margin-bottom: 3px; }
+    h1 { font-size: 3.8em; color: #1B497F; margin-bottom: 3px; }
     h1 .small { font-size: 0.4em; }
     h1 a { text-decoration: none }
-    h2 { font-size: 1.5em; color: #515171; }
-    h3 { text-align: center; color: #515171; }
-    a { color: #515171; }
+    h2 { font-size: 1.5em; color: #1B497F; }
+    h3 { text-align: center; color: #1B497F; }
+    a { color: #1B497F; }
     .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
     .download { float: right; }
     pre { background: #000; color: #fff; padding: 15px;}
@@ -51,21 +51,46 @@
 
 <p>There's been some nice work at figuring out how many connections <a href="http://blog.mixu.net/2011/11/22/performance-benchmarking-socket-io-0-8-7-0-7-11-and-0-6-17-and-nodes-native-tcp/">a server might be able to support</a>, but that only knocks out one of our potential bottlenecks. How do we figure out whether holding simultaneous connections open is the most intensive part of scaling up a socket.io server? And if the bottleneck is message-related, what's a good rule of thumb for when you're going to need to move beyond a single-process to scale?</p>
 
+<p>I'm going to be looking primarily at the cost to sending messages, not the cost of receiving messages. My instinct is that the vast majority of socket.io applications will have access patterns that involve a lot more sending than receiving, so this is a reasonable focus. In my case, I was interested in chat systems, but even in other data-oriented systems I suspect sending will outweigh receiving by a substantial amount.</p>
+
 <p>This is not a comparative analysis. I'm not trying to argue that node or socket.io are better or worse than some other technique (although I will muse on the tradeoffs at the end of the piece), simply trying to give people architecting socket.io applications a sense of when they might start hitting limits and what the behavior is when you're close to the limit. I should also say that I'm not a veteran node programmer, so I apologize if there are any glaring mistakes or I'm making arguments that are already obvious to everyone. They weren't obvious to me starting out, and I had a hard time finding the information I wanted elsewhere, so here I am.</p>
 
-<p><b>TL;DR</b> If you want to bypass the full analysis, heres the punchline: I found that the main performance bottleneck is <i>sending</i> messages, not holding connections open or receiving messages. On a 3.3 MHz Xeon X5470 using one core, the max messages-sent-per-second rate is around 8,000&ndash;10,000 depending on the concurrency level.</p>
+<p><b>TL;DR</b> If you want to bypass the full analysis, heres the punchline: the main performance bottleneck in most applications is going to be <i>sending</i> messages, not holding connections open or receiving messages. On a 3.3 MHz Xeon X5470 using one core, the max messages-sent-per-second rate is around 9,000&ndash;10,000 depending on the concurrency level.</p>
 	
 <h2>Testing Framework</h2>
 
 <p> The testing setup is pretty simple, but is worth a quick description. The server is the worlds' most simple server. It's an echo-broadcast server: whenever it receives a message, it broadcasts that message to every connected client.</p>
 
-<p>The client is a little more complicated, but not much. The main metric it collects is the time that elapses between when it sends a message to the server and when it receives that message back in its broadcasted form. The client gathers the mean response times across a range of concurrency levels and message sending rates, which forms the data set for the analysis below. If the server ever drops a connection (which happens at high loads - more on this later) or it takes longer than five seconds for all the sent-messages to be received after sending stops, then the test is over for that concurrency level.</p>
+<p>The client is a little more complicated, but not much. The main metric it collects is the time that elapses between when it sends a message to the server and when it receives that message back in its broadcasted form. The client gathers the mean response times across a range of concurrency levels and message sending rates, which forms the data set for the analysis below. If the server ever drops a connection (which happens at high loads - more on this later) or it takes longer than five seconds for all the sent-messages to be received after sending stops, then the test is over for that concurrency level. The client is written in Java, using <a href="https://github.com/TooTallNate/Java-WebSocket">this websocket implementation</a>. I tried writing the test client in node and python, but couldn't get the performance I needed at high concurrency states in a single process.</p>
 
 <h2>Results</h2>
 
+<p>All the graphs in this section come from the same data set. The server was running on an Ubuntu VM using one core of a 3.3 MHz Xeon X5470 in a data center here at the <a href="http://media.mit.edu/">MIT Media Lab</a>. The computer running the test client was a beastly OS X that was sufficiently powerful that the client was never performance limited.</p>
+
+<p>Alright, so lets start by looking at what these response time curves look like. When looking at these, it's important to remember that any response time greater than 100-200ms represents a basically fatal situation; what we're interested in here is at what load levels (concurrency, message rates) we start to see slowdown. Once the server event queue starts to jam and we see delays, the writing is on the wall for the server instance.</p>
+
+<img width="100%" src="img/received-per-second.png">
+
+<p>On the X axis of this graph, we're measuring messages <i>received</i> by the server per second across a range of concurrency levels. Each line is a different concurrency level; low concurrency lines are darker, high concurrency is lighter. The Y axis is mean roundtrip time for messagesYou can see the onset of serious performance problems occurs at much lower message reception rates as concurrency increases. This makes sense because for every message we receive we're sending a message to ever connected client, so if sends are even a little expensive, we can quickly jam the event loop.</p>
+
+<p>So lets massage the data and change the X axis to be message <i>sent</i> by the server instead of messages <i>received</i>. Because every messages we receive gets broadcasted, we can just multiply messages received by the concurrency level.</p>
+
+<img width="100%" src="img/sent-per-second.png">
 
 
+<p>That's more like it. When we shift to messages <i>sent</i> per second the different concurrency levels align nicely. No matter your concurrency level, there appears to be a relatively hard limit between 9,000 and 10,000 messages sent per second. (It looks like the concurrency-25 jams earlier, but that's an artifact that takes too much time to explain. It's not really failing at that point.)</p>
 
+<p>The last aspect I want to poke at is behavior below the jamming threshold. Lets switch to a logarithmic Y axis and see how it looks.</p>
+
+<img width="100%" src="img/sent-per-second-log.png">
+
+<p>I want to focus your attention on the pre-jamming part of this graph. What we can see here is that higher concurrency levels <i>do</i> add load to the server. When you're at a concurrency level of 1,000, mean roundtrip times are always longer than when you're at lower concurrency levels and you do jam slightly sooner. This different is not that dramatic, though. Even at 1,000 concurrency, mean roundtrip times are on the order of 100ms. That's not amazing, but it's certainly manageable.</p>
+
+<h2>Analysis</h2>
+
+<p>There are a few major take-away messages from this data that I think will be of practical importance to people architecting and designing node and socket.io applications. 
+	
+<p>There's been a lot of conversation about the relative performance of single-threaded versus multiple-threaded applications. I'm not doing a direct comparison here, but nonetheless I think there are some interesting lessons.</p>
 
 
 	
