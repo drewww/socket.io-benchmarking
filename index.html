@@ -39,7 +39,19 @@
       <span class="small">by Drew Harry</span></h1>
 
 
-    
+	<p>
+
+    <p>I've had lots of fun making prototypes in <a href="http://nodejs.org">nodejs</a> with <a href="http://http://socket.io/">socket.io</a>. But I've kinda felt lost in thinking about the performance of the server if I ever needed to scale something up. What, exactly, is costly? What's the bottleneck in performance? There are a few potential limiting factors:</p>
+
+<ul>
+	<li>holding lots of connections open simultaneously</li>
+	<li>receiving lots of messages</li>
+	<li>sending lots of messages</li>
+</ul>
+
+<p>There's been some nice work at figuring out how many connections <a href="http://blog.mixu.net/2011/11/22/performance-benchmarking-socket-io-0-8-7-0-7-11-and-0-6-17-and-nodes-native-tcp/">a server might be able to support</a>, but that only knocks out one of our potential bottlenecks. How do we figure out whether holding simultaneous connections open is the most intensive part of scaling up a socket.io server?</p>
+	
+	As I was trying to evaluate the performance of a prototype for a <a href="http://roar.media.mit.edu">new project of mine</a> I was having a hard time figuring out what exactly the bottlenecks in my system were going to be. There's been some nice work in this space already, Peter Griess has a handy tool called <a href="http://blog.std.in/2010/09/24/benchmarking-web-socket-servers/">wsbench</a> 
 
     
 
