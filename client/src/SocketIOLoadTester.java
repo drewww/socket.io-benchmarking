@@ -24,7 +24,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	
 	public static final int POST_TEST_RECEPTION_TIMEOUT_WINDOW = 5000;
 	
-	public static final int[] concurrencyLevels = {200, 300, 400, 500, 750, 1000, 1250, 1500, 2000};
+	protected int[] concurrencyLevels = {1, 10, 25, 50, 75, 100, 200, 300, 400, 500, 750, 1000, 1250, 1500, 2000};
 	private static final int MAX_MESSAGES_PER_SECOND_SENT = 800;	
 
 	//	public static final int[] concurrencyLevels = {10, 25, 50};
@@ -46,8 +46,21 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	
 	private boolean testRunning;
 	
-	protected SocketIOLoadTester() {
-		
+	protected SocketIOLoadTester(ArrayList<Integer> concurrencies) {
+		if(concurrencies.size() > 0) {
+			System.out.print("Using custom concurrency levels: ");
+			this.concurrencyLevels = new int[concurrencies.size()];
+
+			int i=0; 
+			for(Integer concurrency : concurrencies) {
+				this.concurrencyLevels[i] = concurrency.intValue();
+				i++;
+				
+				System.out.print(concurrency + " ");
+			}
+			
+			System.out.println();
+		}
 	}
 	
 	public synchronized void run() {
@@ -274,7 +287,16 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 	public static void main(String[] args) {
 		// Just start the thread.
 		
-		SocketIOLoadTester tester = new SocketIOLoadTester();
+		ArrayList<Integer> concurrencies = new ArrayList<Integer>();
+		if(args.length > 0) {
+			// Assume all the arguments are concurrency levels we want to test at.
+
+			for(String arg : args) {
+				concurrencies.add(new Integer(arg));
+			}
+		}
+		
+		SocketIOLoadTester tester = new SocketIOLoadTester(concurrencies);
 		tester.start();
 	}
 
