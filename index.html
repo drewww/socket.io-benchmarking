@@ -100,7 +100,7 @@
 
 <p>On the plus side, performance in non-jammed situations is superb. Up until you jam, you can send even relatively large amounts of messages very quickly. In practice, you probably want your application to be well below the jamming limit because recovering can be difficult.</p>
 
-<p>The task queue also explains why we see longer roundtrip times at higher concurrency levels, even at very low messaging rates. There seems to be a certain amount of periodic CPU overhead to keeping sockets open that needs to happen more or less all the time. If a bunch of these socketup upkeep tasks are queued up when a message arrives, it's not going to get processed until socket upkeep is done. This pushes up mean roundtrip times. Really, any periodic task your system needs to do (and most systems will have something in this category) will have a similar effect on your baseline roundtrip performance. Above the jamming threshold, these periodic tasks simply don't get processed in time. In <span class="inline">socket.io</span>'s case, if you jam the server, it will start dropping connections indiscriminately because it can't get its socket upkeep executed in reasonable timeframes.</p>
+<p>The task queue also explains why we see longer roundtrip times at higher concurrency levels, even at very low messaging rates. There seems to be a certain amount of periodic CPU overhead to keeping sockets open that needs to happen more or less all the time. If a bunch of these socket upkeep tasks are queued up when a message arrives, it's not going to get processed until socket upkeep is done. This pushes up mean roundtrip times. Really, any periodic task your system needs to do (and most systems will have something in this category) will have a similar effect on your baseline roundtrip performance. Above the jamming threshold, these periodic tasks simply don't get processed in time. In <span class="inline">socket.io</span>'s case, if you jam the server, it will start dropping connections indiscriminately because it can't get its socket upkeep executed in reasonable timeframes.</p>
 
 <h2>So What?</h2>
 
@@ -109,7 +109,14 @@
 <p>When you do need to start scaling, this also suggests a plan of attack. You can split off a thin communication layer that keeps sockets open for you and handles sending and receiving and isolate a huge amount of the load. Once that part of the problem is its own process, you can more easily scale up without making any particularly significant changes to the actual core logic of the application. This is all speculative, though. I haven't actually written that part of the system yet, but based on this data it seems to me like a reasonable strategy.</p>
 	
 <h2>Open Questions</h2>
-Dependency on message size, comparison to lower-level protocols, measuring sending versus receiving...?
+
+<p>There are a bunch of questions that I didn't address that might be interesting. Here are some quick potential outstanding questions:</p>
+
+<ul>
+	<li>How much is sending rate related to the size of the messages? Put another way, to what extent is sending bandwidth limited?</li>
+	<li>How much worse are websockets than raw sockets? How does socket.io's implementation compare to other implementations? How might it be improved?</li>
+	<li>How does sending compare with receiving?</li>
+</ul>
 
 <h2>Acknowledgments</h2>
 
