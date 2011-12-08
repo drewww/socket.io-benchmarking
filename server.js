@@ -36,11 +36,6 @@ if(program.disableheartbeats) {
 
 io.set("log level", 0);
 
-//
-// GLOBALS
-//
-var connectedUsersCount = 0;
-var messagesPerSecond = 0;
 
 //
 // LISTENERS
@@ -49,6 +44,13 @@ var messagesPerSecond = 0;
 app.get('/', function (req, res) {
   res.sendfile(__dirname + '/index.html');
 });
+
+
+//
+// GLOBALS
+//
+var connectedUsersCount = 0;
+var messagesPerSecond = 0;
 
 io.sockets.on('connection', function(socket) {
     connectedUsersCount++;
@@ -59,11 +61,7 @@ io.sockets.on('connection', function(socket) {
         
         messagesPerSecond++;
     });
-    
-    socket.on('hello', function(data) {
-        logger.info("hello");
-    });
-    
+
     socket.on('disconnect', function(data) {
         connectedUsersCount--;
     });
