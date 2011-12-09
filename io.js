@@ -20,6 +20,8 @@ if(program.verbose) {
     setLevel = "debug";
 }
 
+io.set("log level", 0);
+
 var logger = new (winston.Logger)({
     transports: [
       new (winston.transports.Console)({timestamp:true, level:setLevel, colorize:true}),
@@ -77,7 +79,17 @@ connection.on('ready', function() {
 var clients = [];
 io.sockets.on('connection', function(socket) {
     
+    logger.info("Received connection.");
+    
     // Do some startup stuff. For now, nothing.
+    socket.on('message', function(data) {
+        // When we get a message, forward it on to the server.
+        exchange.publish("from-user." + socket.id, data);
+    });
+    
+    // socket.on('chat', function(data) {
+    //     logger.info("chat.data: " + data);
+    // })
     
     socket.on('disconnect', function(data) {
         

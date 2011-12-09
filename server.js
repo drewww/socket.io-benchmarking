@@ -36,18 +36,7 @@ if(program.queuehost) {
     queueHost = program.queuehost;
 }
 
-var connection = amqp.createConnection({host:queueHost});
-var exchange;
-
-connection.on('ready', function() {
-    var e = connection.exchange('socket-events',{"type":"topic"}, function(newExchange) {
-        logger.info("Exchange " + newExchange.name + " is open for business.");
-        
-        exchange = newExchange;
-    });
-});
-
-app.listen(port);
+// app.listen(port);
 
 if(program.disableheartbeats) {
     io.set("heartbeats", false)
@@ -71,22 +60,34 @@ app.get('/', function (req, res) {
 var connectedUsersCount = 0;
 var messagesPerSecond = 0;
 
-io.sockets.on('connection', function(socket) {
-    connectedUsersCount++;
-    
-    socket.on('chat', function(data) {
-        // logger.info("chat message arrived");
-        io.sockets.emit('chat', {text:data.text});
-        
-        messagesPerSecond++;
-    });
+setTimeout(logStatus, 1000);
 
-    socket.on('disconnect', function(data) {
-        connectedUsersCount--;
+var connection = amqp.createConnection({host:queueHost});
+var exchange;
+
+connection.on('ready', function() {
+    var e = connection.exchange('socket-events',{"type":"topic"}, function(newExchange) {
+        logger.info("Exchange " + newExchange.name + " is open for business.");
+        
+        exchange = newExchange;
+        
+        var q = connection.queue("", {"exclusive":true}, function(newQueue) {
+            logger.info("Queue " + newQueue.name + " is open for business.");
+
+            queue = newQueue;
+            
+            // Do binding setup.
+            // The message hierarchy is going to be:
+            // broadcast
+            // room.room-name
+            // user.user-id
+            queue.bind(exchange.name, "from-user.*");
+
+            queue.subscribe(dequeue);
+        });
+        
     });
 });
-
-setTimeout(logStatus, 1000);
 
 //
 // FUNCTIONS
@@ -100,3 +101,8 @@ function logStatus() {
     messagesPerSecond = 0;
 }
 
+function dequeue(message,  headers, deliveryInfo) {
+    logger.info("Got a message with key: " + deliveryInfo.routingKey + " and message: " + message);
+    
+    messagesPerSecond++;
+}
