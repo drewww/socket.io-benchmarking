@@ -5,7 +5,7 @@
 
 var app = require('express').createServer(),
     io = require('socket.io').listen(app),
-    logger = require('winston'),
+    winston = require('winston'),
     program = require('commander'),
     amqp = require('amqp');
 
@@ -14,7 +14,6 @@ program.version('0.1')
     .option('-v, --verbose', 'Turns on verbose logging.')
     .option('-p, --port', 'Set the websocket port to bind to (default 8080)')
     .parse(process.argv);
-
 
 var setLevel = "info";
 if(program.verbose) {
@@ -51,14 +50,31 @@ var exchange;
 var queue;
 connection.on('ready', function() {
     var e = connection.exchange('socket-events',{"type":"topic"}, function(newExchange) {
-        logger.info("Exchange " + exchange.name + " is open for business.");
+        logger.info("Exchange " + newExchange.name + " is open for business.");
         
         exchange = newExchange;
-    });
-
-    var q = connection.queue("", {"exclusive":true}, function(newQueue) {
-        logger.info("Queue " + newQueue.name + " is open for business.");
         
-        queue = newQueue;
+        var q = connection.queue("", {"exclusive":true}, function(newQueue) {
+            logger.info("Queue " + newQueue.name + " is open for business.");
+
+            queue = newQueue;
+            
+            // Do binding setup.
+            // The message hierarchy is going to be:
+            // broadcast
+            // room.room-name
+            // user.user-id
+            queue.bind(exchange.name, "broadcast");
+
+            var response = queue.subscribe(dequeue);
+            logger.debug("subscribe response: " + response);
+        });
     });
+    
+    logger.debug("e: " + e);
 });
+
+
+function dequeue(message, headers, deliveryInfo) {
+    logger.info("Got a message with key: " + deliveryInfo.routingKey + " and message: " + message);
+}
