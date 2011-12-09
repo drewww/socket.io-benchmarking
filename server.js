@@ -1,7 +1,8 @@
 var app = require('express').createServer(),
     io = require('socket.io').listen(app),
     logger = require('winston'),
-    program = require('commander');
+    program = require('commander'),
+    amqp = require('amqp');
     
 //  
 // SETUP
@@ -13,6 +14,7 @@ logger.default.transports.console.timestamp = true;
 program.version('0.1')
     .option('-p, --port [num]', 'Set the server port (default 8080)')
     .option('-H, --disableheartbeats', 'Disable heartbeats')
+    .option('-q, --queuehost', 'Set the queue host.')
     .parse(process.argv)
     
 var server = "localhost";
@@ -27,6 +29,23 @@ if(program.port) {
     logger.info("Setting port to " + program.port);
     port = program.port;
 }
+
+var queueHost = "localhost";
+if(program.queuehost) {
+    logger.info("Setting queue host to " + program.queuehost);
+    queueHost = program.queuehost;
+}
+
+var connection = amqp.createConnection({host:queueHost});
+var exchange;
+
+connection.on('ready', function() {
+    var e = connection.exchange('socket-events',{"type":"topic"}, function(newExchange) {
+        logger.info("Exchange " + newExchange.name + " is open for business.");
+        
+        exchange = newExchange;
+    });
+});
 
 app.listen(port);
 
