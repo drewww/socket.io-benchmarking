@@ -74,7 +74,26 @@ connection.on('ready', function() {
     logger.debug("e: " + e);
 });
 
+var clients = [];
+io.sockets.on('connection', function(socket) {
+    
+    // Do some startup stuff. For now, nothing.
+    
+    socket.on('disconnect', function(data) {
+        
+    });
+});
 
 function dequeue(message, headers, deliveryInfo) {
     logger.info("Got a message with key: " + deliveryInfo.routingKey + " and message: " + message);
+    
+    // This is where routing logic goes. Look at the routingKey and make 
+    // choices about which of our connected clients this shoud be routed to.
+    if(deliveryInfo.routingKey=="broadcast") {
+        // Send to everyone.
+        // io.sockets.emit - something; gotta figure out how we're packaging
+        // things in the amqp message.
+    } else {
+        // Do something else.
+    }
 }
