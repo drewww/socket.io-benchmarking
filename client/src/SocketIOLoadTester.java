@@ -129,7 +129,7 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		this.clients.clear();
 		
 		for(int i=0; i<this.concurrency; i++) {
-			SocketIOClient client = new SocketIOClient(SocketIOClient.getNewSocketURI("roar.media.mit.edu:8080"), this);
+			SocketIOClient client = new SocketIOClient(SocketIOClient.getNewSocketURI("localhost:8080"), this);
 			this.clients.add(client);
 			client.connect();
 		}

@@ -83,7 +83,7 @@ public class SocketIOClient extends WebSocketClient {
 	
 	public void chat(String message) {
 		try {
-			String fullMessage = "5:::{\"name\":\"chat\", \"args\":[{\"text\":\""+message+"\"}]}";
+			String fullMessage = "3:::{\"name\":\"chat\", \"args\":[{\"text\":\""+message+"\"}]}";
 			this.send(fullMessage);
 		} catch (IOException e) {
 			e.printStackTrace();
