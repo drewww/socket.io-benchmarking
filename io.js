@@ -84,7 +84,7 @@ io.sockets.on('connection', function(socket) {
     // Do some startup stuff. For now, nothing.
     socket.on('message', function(data) {
         // When we get a message, forward it on to the server.
-        exchange.publish("from-user." + socket.id, data);
+        exchange.publish("from-user." + socket.id, data, {"contentType":"text/plain"});
     });
     
     // socket.on('chat', function(data) {
@@ -97,14 +97,16 @@ io.sockets.on('connection', function(socket) {
 });
 
 function dequeue(message, headers, deliveryInfo) {
-    logger.info("Got a message with key: " + deliveryInfo.routingKey + " and message: " + message);
+    // logger.info("Got a message with key: " + deliveryInfo.routingKey + " and message: " + message);
     
     // This is where routing logic goes. Look at the routingKey and make 
     // choices about which of our connected clients this shoud be routed to.
     if(deliveryInfo.routingKey=="broadcast") {
         // Send to everyone.
-        // io.sockets.emit - something; gotta figure out how we're packaging
-        // things in the amqp message.
+        
+        message = JSON.parse(message.data.toString());
+        
+        io.sockets.emit(message.name, {"text":message.args[0].text});        
     } else {
         // Do something else.
     }
