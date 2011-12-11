@@ -81,7 +81,7 @@ connection.on('ready', function() {
             // broadcast
             // room.room-name
             // user.user-id
-            queue.bind(exchange.name, "from-user.*");
+            queue.bind(exchange.name, "user.*");
 
             queue.subscribe(dequeue);
         });
@@ -101,28 +101,29 @@ function logStatus() {
 }
 
 function dequeue(message,  headers, deliveryInfo) {
-    // logger.info("Got a message with key: " + deliveryInfo.routingKey + " and message: ");
-    // console.log(message);
-    // console.log(headers);
-    // console.log(deliveryInfo);
-    // logger.info(message.name);
-    // logger.info(message.args);
-    // logger.info(message.args.text);
     var contents = JSON.parse(message.data.toString());
-    
-    // logger.info(contents.name);
-    // logger.info(contents.args[0].text);
-    
-    switch(contents.name) {
-        case 'chat':
-            // Here's how we broadcast:
-            exchange.publish("broadcast", message.data.toString());
-            break;
-        default:
-            logger.warning("Received an unknown event type: " + contents.name);
-            break;
+
+    if(headers["protocol-message"]) {
+        // Handle protocol messages here.
+        switch(contents.name) {
+            case 'connected':
+                connectedUsersCount++;
+                break;
+            case 'disconnected':
+                connectedUsersCount--;
+                break;
+        }
+    } else {
+        messagesPerSecond++;
+        switch(contents.name) {
+            case 'chat':
+                // Here's how we broadcast:
+                exchange.publish("broadcast", message.data.toString());
+                break;
+            default:
+                logger.warning("Received an unknown event type: " + contents.name);
+                break;
+        }
     }
 
-
-    messagesPerSecond++;
 }

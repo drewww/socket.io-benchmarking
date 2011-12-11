@@ -69,7 +69,6 @@ connection.on('ready', function() {
             queue.bind(exchange.name, "broadcast");
 
             var response = queue.subscribe(dequeue);
-            logger.debug("subscribe response: " + response);
         });
     });
     
@@ -79,22 +78,36 @@ connection.on('ready', function() {
 var clients = [];
 io.sockets.on('connection', function(socket) {
     
-    logger.info("Received connection.");
+    // logger.info("Received connection.");
+    publishEventFromSocket(socket, "connected", null, true);
     
     // Do some startup stuff. For now, nothing.
     socket.on('message', function(data) {
         // When we get a message, forward it on to the server.
-        exchange.publish("from-user." + socket.id, data, {"contentType":"text/plain"});
+        publishMessageFromSocket(socket, data, false);
     });
-    
-    // socket.on('chat', function(data) {
-    //     logger.info("chat.data: " + data);
-    // })
     
     socket.on('disconnect', function(data) {
-        
+        publishEventFromSocket(socket, "disconnected", null, true);
     });
 });
+
+function publishMessageFromSocket(socket, body, protocolMessage) {
+    exchange.publish("user." + socket.id, body,
+        {"headers":{"protocol-message":protocolMessage}});
+}
+
+function publishEventFromSocket(socket, eventName, args, protocolMessage) {
+    publishMessageFromSocket(socket, createMessage(eventName, args), protocolMessage);
+}
+
+function createMessage(eventName, args) {
+    if(args==null) {
+        args = [];
+    }
+    
+    return JSON.stringify({"name":eventName, "args":args});
+}
 
 function dequeue(message, headers, deliveryInfo) {
     // logger.info("Got a message with key: " + deliveryInfo.routingKey + " and message: " + message);
