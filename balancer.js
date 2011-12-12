@@ -67,19 +67,19 @@ app.get('/', function(req, res) {
     
     var hostToUse;
     var currentLow = 1000000;
-    for(var host in ioNodes) {
-        if(ioNodes[host] < currentLow) {
-            hostToUse = host;
-            currentLow = ioNodes[host];
+    for(var socketHost in ioNodes) {
+        logger.info("socketHost: " + socketHost + " (with "+ioNodes[socketHost]+")");
+        if(ioNodes[socketHost] < currentLow) {
+            hostToUse = socketHost;
+            currentLow = ioNodes[socketHost];
             
             // Up the value to sort of fake a round-robin effect until we
             // hear back from a node telling us what its load actually is.
-            ioNodes[host] = ioNodes[host]+1;
         }
     }
     
     logger.info("Telling client to use " + hostToUse + " ("+currentLow+" sockets)");
-    
+    ioNodes[hostToUse] = ioNodes[hostToUse]+1;    
     res.send(hostToUse);
 });
 
