@@ -12,9 +12,9 @@ logger.cli();
 logger.default.transports.console.timestamp = true;
     
 program.version('0.1')
-    .option('-p, --port [num]', 'Set the server port (default 8080)')
+    .option('-p, --port <num>', 'Set the server port (default 8080)')
     .option('-H, --disableheartbeats', 'Disable heartbeats')
-    .option('-q, --queuehost', 'Set the queue host.')
+    .option('-q, --queuehost <host>', 'Set the queue host.')
     .parse(process.argv)
     
 var server = "localhost";
@@ -101,6 +101,7 @@ function logStatus() {
 }
 
 function dequeue(message,  headers, deliveryInfo) {
+    
     var contents = JSON.parse(message.data.toString());
 
     if(headers["protocol-message"]) {

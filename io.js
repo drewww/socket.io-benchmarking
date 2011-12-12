@@ -12,7 +12,8 @@ var app = require('express').createServer(),
 
 program.version('0.1')
     .option('-v, --verbose', 'Turns on verbose logging.')
-    .option('-p, --port', 'Set the websocket port to bind to (default 8080)')
+    .option('-p, --port <num>', 'Set the websocket port to bind to (default 8080)')
+    .option('-H, --host <host>', 'Set the host string; important for running with the balancer to be able to advertise an externally visible host name.')
     .parse(process.argv);
 
 var setLevel = "info";
@@ -34,7 +35,15 @@ var queueHost = "localhost";
 if(program.args.length>=0) {
     queueHost = program.args[0];
 } else if (program.args.length==0) {
-    logger.warn("Default to localhost for queue host.");
+    logger.warning("Default to localhost for queue host.");
+}
+
+var host = "localhost";
+if(program.host) {
+    host = program.host;
+    logger.info("Setting host to " + host);
+} else {
+    logger.warning("Defaulting host to localhost - this is probably bad if you're using balancer. Use -h to set the host.");
 }
 
 var port = 8080;
@@ -49,10 +58,11 @@ var connection = amqp.createConnection({host: queueHost});
 
 // When we get a connection to the queue, do basic setup work.
 var exchange;
+var balancerExchange;
 var queue;
 connection.on('ready', function() {
-    var e = connection.exchange('socket-events',{"type":"topic"}, function(newExchange) {
-        logger.info("Exchange " + newExchange.name + " is open for business.");
+    connection.exchange('socket-events',{"type":"topic"}, function(newExchange) {
+        logger.info("Connected to socket exchange: " + newExchange.name);
         
         exchange = newExchange;
         
@@ -71,14 +81,32 @@ connection.on('ready', function() {
             var response = queue.subscribe(dequeue);
         });
     });
+
+
+    connection.exchange('io-balancer',{"type":"topic"}, function(newExchange) {
+        logger.info("Connected to balance exchange: " + newExchange.name);
+        
+        balancerExchange = newExchange;
+        
+        var q = connection.queue("", {"exclusive":true}, function(newQueue) {
+            logger.info("Queue " + newQueue.name + " is open for business.");
+
+            queue = newQueue;
+
+            queue.bind(balancerExchange.name, "io.*");
+
+            var response = queue.subscribe(dequeueBalancer);
+        });
+    });
+
     
-    logger.debug("e: " + e);
 });
 
-var clients = [];
+var numConnectedClients = 0;
 io.sockets.on('connection', function(socket) {
+    numConnectedClients++;
     
-    // logger.info("Received connection.");
+    logger.info("Received connection.");
     publishEventFromSocket(socket, "connected", null, true);
     
     // Do some startup stuff. For now, nothing.
@@ -89,6 +117,7 @@ io.sockets.on('connection', function(socket) {
     
     socket.on('disconnect', function(data) {
         publishEventFromSocket(socket, "disconnected", null, true);
+        numConnectedClients--;
     });
 });
 
@@ -122,5 +151,13 @@ function dequeue(message, headers, deliveryInfo) {
         io.sockets.emit(message.name, {"text":message.args[0].text});        
     } else {
         // Do something else.
+    }
+}
+
+function dequeueBalancer(message, headers, deliveryInfo) {
+    logger.debug("io-balancer message!");
+    if(deliveryInfo.routingKey=="io.status") {
+        logger.debug("Responding to io.status message.");
+        balancerExchange.publish("balancer.status", JSON.stringify({"host":host+":"+port, "socket-count":numConnectedClients}));
     }
 }
