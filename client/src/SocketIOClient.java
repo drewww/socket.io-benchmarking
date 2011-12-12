@@ -105,20 +105,34 @@ public class SocketIOClient extends WebSocketClient {
 
 	public static URI getNewSocketURI(String server) {
 		try {
-			URL url = new URL("http://" + server + "/socket.io/1/"); 
+			
+			// first talk to the load balancer to ask which server we should be communicating with
+			URL url = new URL("http://" + server + "/"); 
 			HttpURLConnection connection = (HttpURLConnection) url.openConnection();           
 			connection.setDoOutput(true);
 			connection.setDoInput(true);
-			connection.setRequestMethod("POST"); 
+			connection.setRequestMethod("GET"); 
 
+			
+		    BufferedReader rd = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+		    String socketHost = rd.readLine();
+			
+			// now talk to the actual socket server
+			url = new URL("http://" + socketHost + "/socket.io/1/"); 
+			connection = (HttpURLConnection) url.openConnection();           
+			connection.setDoOutput(true);
+			connection.setDoInput(true);
+			connection.setRequestMethod("POST"); 
+			
 			DataOutputStream wr = new DataOutputStream(connection.getOutputStream ());
 			wr.flush();
 			wr.close();
 			
-		    BufferedReader rd = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+		    rd = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 		    String line = rd.readLine();
 		    String hskey = line.split(":")[0];
-		    return new URI("ws://" + server + "/socket.io/1/websocket/" + hskey);
+		    System.out.println("hskey: " + hskey);
+		    return new URI("ws://" + socketHost + "/socket.io/1/websocket/" + hskey);
 		} catch (Exception e) {
 			System.out.println("error: " + e);
 			return null;

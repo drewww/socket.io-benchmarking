@@ -129,7 +129,9 @@ public class SocketIOLoadTester extends Thread implements SocketIOClientEventLis
 		this.clients.clear();
 		
 		for(int i=0; i<this.concurrency; i++) {
-			SocketIOClient client = new SocketIOClient(SocketIOClient.getNewSocketURI("localhost:8080"), this);
+			// TODO Abstract this out. This host needs to be the BALANCER host not a socket host. It gets a socket host
+			// name from the balancer. This should be a flag and better documented, but for now just going to not sweat it.
+			SocketIOClient client = new SocketIOClient(SocketIOClient.getNewSocketURI("localhost:8989"), this);
 			this.clients.add(client);
 			client.connect();
 		}
