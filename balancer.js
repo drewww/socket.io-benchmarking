@@ -55,6 +55,34 @@ var app = require('express').createServer(),
 
 app.listen(port);
 
+app.get('/', function(req, res) {
+    // This is where we decide which server we should route this request to.
+    // First approach, we'll just sort the dictionary and figure out which is 
+    // the lowest loaded server. Route them to that server and increment
+    // their count (speculatively).
+    
+    if(ioNodes.length==0) {
+        res.send("No servers available right now.", 502);
+    }
+    
+    var hostToUse;
+    var currentLow = 1000000;
+    for(var host in ioNodes) {
+        if(ioNodes[host] < currentLow) {
+            hostToUse = host;
+            currentLow = ioNodes[host];
+            
+            // Up the value to sort of fake a round-robin effect until we
+            // hear back from a node telling us what its load actually is.
+            ioNodes[host] = ioNodes[host]+1;
+        }
+    }
+    
+    logger.info("Telling client to use " + hostToUse + " ("+currentLow+" sockets)");
+    
+    res.send(hostToUse);
+});
+
 var connection = amqp.createConnection({host: queueHost});
 
 // When we get a connection to the queue, do basic setup work.
