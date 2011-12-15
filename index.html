@@ -137,6 +137,10 @@ Many thanks to <a href="http://tirl.org/">Charlie DeTar</a> and <a href="https:/
 
 	I would of course be deeply grateful for any updates or edits to the code. It might be worth turning the core client-side tester into a general purpose socket.io load testing tool aimed for practical, real-life use patterns at high concurrency. 
     </p>
+
+	<p>After doing this benchmarking, I built the barest bones of a message-queue based system that would allow you to easily spread this load across multiple machines. It's realllly rough, but it boosts the jamming threshold as one might expect by spreading the socket-management load across multiple machines. You can find that work in <a href="https://github.com/drewww/socket.io-benchmarking/tree/rabbit">the "rabbit" branch</a> of this repository. There's an io node, a core server node, and a load balancer that work together to make this possible.</p>
+
+	<p>You might also be interested in <a href="https://github.com/MrJoes/sock-benchmarking">a fork of this project</a> that supports the SockJS protocol and is a slightly cleaner codebase with some bug fixes.</p>
 	
 
   </div>
