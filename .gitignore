@@ -2,6 +2,6 @@ bin
 *.log
 *~
 .DS_Store
-.project
+client/target
 misc
 node_modules
