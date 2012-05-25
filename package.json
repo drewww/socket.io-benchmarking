@@ -1,0 +1,11 @@
+{
+  "name":    "socke.io-benchmarking",
+  "version": "0.1.0",
+  "description": "Socket.io Benchmarking",
+  "dependencies": {
+    "express":   "*",
+    "socket.io": "*",
+    "winston": "*",
+    "commander":"*"
+  }
+}
