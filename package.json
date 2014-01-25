@@ -1,5 +1,5 @@
 {
-  "name":    "socke.io-benchmarking",
+  "name":    "socket.io-benchmarking",
   "version": "0.1.0",
   "description": "Socket.io Benchmarking",
   "dependencies": {
