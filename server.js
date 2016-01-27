@@ -1,5 +1,7 @@
-var app = require('express').createServer(),
-    io = require('socket.io').listen(app),
+var http = require('http'),
+    app = require('express')(),
+    server = http.createServer(app),
+    io = require('socket.io').listen(server),
     logger = require('winston'),
     program = require('commander');
     
