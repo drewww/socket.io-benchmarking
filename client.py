@@ -3,6 +3,8 @@
 """
 client.py
 
+Python 2.7.x
+
 Based heavily on:
  - https://github.com/mtah/python-websocket/blob/master/examples/echo.py
  - http://stackoverflow.com/a/7586302/316044
@@ -41,18 +43,17 @@ class Client(object):
         resp  = conn.getresponse() 
         hskey = resp.read().split(':')[0]
 
-        self.ws = websocket.WebSocket(
+        self.ws = websocket.WebSocketApp(
                         'ws://'+server+':'+str(port)+'/socket.io/1/websocket/'+hskey,
-                        onopen   = self._onopen,
-                        onmessage = self._onmessage,
-                        onclose = self._onclose,
-                        onerror = self._onerror)
+                        on_open   = self._onopen,
+                        on_message = self._onmessage,
+                        on_close = self._onclose,
+                        on_error = self._onerror)
         self.state = Client.DISCONNECTED
         
 
     def _onopen(self):
         self.state = Client.CONNECTED
-        
         Client.addMessage("open")
         
         self.heartbeat()
@@ -150,7 +151,7 @@ clients = []
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description="Load tester for socket.io applications (customized for ROAR)")
-    parser.add_argument('-p', '--port', action='store', default=8888)
+    parser.add_argument('-p', '--port', action='store', default=8080)
     parser.add_argument('-c', '--concurrency', type=int, default=1)
     parser.add_argument('-C', '--chat',metavar="MSGS_PER_MIN_CLIENT", default=0)
     parser.add_argument('server')
