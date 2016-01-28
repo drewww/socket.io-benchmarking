@@ -3,6 +3,8 @@
 """
 client.py
 
+Python 2.7.x
+
 Based heavily on:
  - https://github.com/mtah/python-websocket/blob/master/examples/echo.py
  - http://stackoverflow.com/a/7586302/316044
